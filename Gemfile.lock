@@ -1,9 +1,9 @@
 PATH
   remote: .
   specs:
-    jekyll-theme-cayman (0.1.0)
+    minima (2.1.1)
       jekyll (~> 3.5)
-      jekyll-seo-tag (~> 2.0)
+      jekyll-seo-tag (~> 2.1)
 
 GEM
   remote: https://rubygems.org/
@@ -54,7 +54,8 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  jekyll-theme-cayman!
+  bundler (~> 1.12)
+  minima!
 
 BUNDLED WITH
    1.16.0
