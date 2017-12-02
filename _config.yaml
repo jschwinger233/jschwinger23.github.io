@@ -1,1 +1,0 @@
-baseurl: /jekyll_demo
