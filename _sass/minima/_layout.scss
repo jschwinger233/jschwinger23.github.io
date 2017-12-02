@@ -179,10 +179,6 @@
   padding: $spacing-unit 0;
 }
 
-.page-heading {
-  @include relative-font-size(1.25);
-}
-
 .post-list {
   margin-left: 0;
   list-style: none;
