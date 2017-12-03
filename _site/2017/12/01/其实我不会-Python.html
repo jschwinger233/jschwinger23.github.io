@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/assets/main.css">
+  <link rel="alternate" type="application/rss+xml" title="小生境" href="/feed.xml">
+  
+</head>
+
+
+  <body>
+
+    <header class="site-header" role="banner">
+
+  <div class="wrapper">
+    
+    
+    <a class="site-title" href="/">小生境</a>
+  
+    
+      <nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+              <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+              <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger">
+          
+            
+            
+          
+            
+            
+          
+            
+            
+          
+        </div>
+      </nav>
+    
+  </div>
+</header>
+
+
+    <main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">其实我不会 Python</h1>
+    <p class="post-meta">
+      <time datetime="2017-12-01T00:00:00+08:00" itemprop="datePublished">
+        
+        2017-12-01
+      </time>
+      </p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <p>其实我不会 Python。</p>
+
+<p>比如我有个需求是能够通过基类拿到子类的列表，比如是这样的：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">B</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">C</span><span class="p">(</span><span class="n">B</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">subclasses</span><span class="p">)</span>
+<span class="c"># expected: [&lt;class '__main__.B'&gt;, &lt;class '__main__.C'&gt;]</span>
+</code></pre></div></div>
+
+<p>然后我发现 <code class="highlighter-rouge">__subclasses__</code> 只能拿到一级继承关系的子类：</p>
+
+<blockquote>
+  <p>Each new-style class keeps a list of weak references to its immediate subclasses. This method returns a list of all those references still alive.</p>
+</blockquote>
+
+<p>(by https://docs.python.org/release/2.6.4/library/stdtypes.html#class.__subclasses__)</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>print(A.__subclasses__())
+# output: [&lt;class '__main__.B'&gt;]
+</code></pre></div></div>
+
+<p>所以眼下我有几个可行的做法：</p>
+
+<ol>
+  <li>写一个装饰器，对子类进行 register。</li>
+  <li>递归查找 <code class="highlighter-rouge">__subclasses__</code>。</li>
+  <li>在元类上做一些手脚。</li>
+  <li>在 <code class="highlighter-rouge">__init_subclass__</code> 上做一些手脚。</li>
+</ol>
+
+<p>方案一显然太傻比了，继承关系就是很 explicit 的关系了，居然还要再去手动注册。</p>
+
+<p>方案二显然太傻比了，不要在 Python 里用递归除非是算法面试。</p>
+
+<p>方案三显然太傻比了，写出元类还打不打算让别人维护了。</p>
+
+<p>所以只剩下方案四了，虽然也只是比元类稍好一丢丢。</p>
+
+<p>所以应该怎么写呢。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="n">subclasses</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">def</span> <span class="nf">__init_subclass__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">(</span><span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">subclasses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>写两个类试一下:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">B</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">C</span><span class="p">(</span><span class="n">B</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">subclasses</span><span class="p">)</span>
+<span class="c"># output: [&lt;class '__main__.B'&gt;, &lt;class '__main__.C'&gt;]</span>
+</code></pre></div></div>
+
+<p>works fine!</p>
+
+<p>然后我发现有很多类都有这种需求，我决定写个装饰器，用法是这样的：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@record_subclasses</span>
+<span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">B</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">C</span>
+    <span class="k">pass</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">subclasses</span><span class="p">)</span>
+<span class="c"># output: [&lt;class '__main__.B'&gt;, &lt;class '__main__.C'&gt;]</span>
+</code></pre></div></div>
+
+<p>好，动手！</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">record_subclasses</span><span class="p">(</span><span class="n">klass</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init_subclass__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">(</span><span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">subclasses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+
+    <span class="n">klass</span><span class="o">.</span><span class="n">subclasses</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">klass</span><span class="o">.</span><span class="n">__init_subclass__</span> <span class="o">=</span> <span class="n">__init_subclass__</span>
+    <span class="k">return</span> <span class="n">klass</span>
+
+<span class="nd">@record_subclasses</span>
+<span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">B</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">C</span><span class="p">(</span><span class="n">B</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">subclasses</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>然而运行起来的时候报错了lol</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code># output
+TypeError: __init_subclass__() missing 1 required positional argument: 'cls'
+</code></pre></div></div>
+
+<p>出错的原因是 <code class="highlighter-rouge">__init_subclass__</code> 是一个隐式类方法，a.k.a 我们必须用 <code class="highlighter-rouge">classmethod</code> 给它包起来。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">record_subclasses</span><span class="p">(</span><span class="n">klass</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">__init_subclass__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">(</span><span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">subclasses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+
+    <span class="n">klass</span><span class="o">.</span><span class="n">subclasses</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">klass</span><span class="o">.</span><span class="n">__init_subclass__</span> <span class="o">=</span> <span class="n">__init_subclass__</span>
+    <span class="k">return</span> <span class="n">klass</span>
+
+<span class="nd">@record_subclasses</span>
+<span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">B</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">C</span><span class="p">(</span><span class="n">B</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">subclasses</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>looks good，然而依然报错。</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code># output
+RuntimeError: super(): __class__ cell not found
+</code></pre></div></div>
+
+<p>因为新式 <code class="highlighter-rouge">super</code> 的参数其实是通过 <code class="highlighter-rouge">__class__</code> 与 <code class="highlighter-rouge">&lt;firstarg&gt;</code> 隐式传入的，而 Python 的变量查找又是词法作用域规则，因此在 runtime 时找不到 <code class="highlighter-rouge">__class__</code> 变量。</p>
+
+<blockquote>
+  <p>The new syntax: <code class="highlighter-rouge">super()</code> is equivalent to: <code class="highlighter-rouge">super(__class__, &lt;firstarg&gt;)</code> where <code class="highlighter-rouge">__class__</code> is the class that the method was defined in, and <code class="highlighter-rouge">&lt;firstarg&gt;</code> is the first parameter of the method (normally self for instance methods, and cls for class methods).</p>
+</blockquote>
+
+<p>(by https://www.python.org/dev/peps/pep-3135/#specification)</p>
+
+<p>所以 fallback 到 pre-<a href="https://www.python.org/dev/peps/pep-3135/">PEP 3135</a> 的 super，应该写成：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">record_subclasses</span><span class="p">(</span><span class="n">klass</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">__init_subclass__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">(</span><span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">subclasses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+
+    <span class="n">klass</span><span class="o">.</span><span class="n">subclasses</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">klass</span><span class="o">.</span><span class="n">__init_subclass__</span> <span class="o">=</span> <span class="n">__init_subclass__</span>
+    <span class="k">return</span> <span class="n">klass</span>
+
+<span class="nd">@record_subclasses</span>
+<span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">B</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">C</span><span class="p">(</span><span class="n">B</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">subclasses</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>终于，这下<strong>看上去</strong>正常了。</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code># output
+[&lt;class '__main__.B'&gt;, &lt;class '__main__.C'&gt;]
+</code></pre></div></div>
+
+<p>但是还是有问题。</p>
+
+<p>要弄清楚这里的问题的话必须完成搞清楚 <code class="highlighter-rouge">super</code> 的用法，which 是严重 undocumented 的。所以我打算自己写一个 <code class="highlighter-rouge">super</code>。</p>
+
+<p>首先我要做的事情是定义<strong>方法</strong>类型，which 是个描述符。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Method</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">func</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="nb">NotImplementedError</span>
+
+<span class="k">class</span> <span class="nc">InstanceMethod</span><span class="p">(</span><span class="n">Method</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="c"># bound method</span>
+        <span class="k">if</span> <span class="n">instance</span><span class="p">:</span>
+            <span class="n">partial</span> <span class="o">=</span> <span class="k">lambda</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">:</span> <span class="bp">self</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">__class__</span><span class="p">(</span><span class="n">partial</span><span class="p">)</span>
+
+        <span class="c"># unbound method</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+</code></pre></div></div>
+
+<p>我们来验证一下绑定方法、非绑定方法：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">a</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="nd">@InstanceMethod</span>
+    <span class="k">def</span> <span class="nf">a</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">a</span><span class="p">)</span>
+<span class="c"># output: &lt;__main__.InstanceMethod at 0x10e12f6a0&gt;</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">a</span><span class="p">())</span>
+<span class="c"># output: TypeError: a() missing 1 required positional argument: 'self'</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">A</span><span class="p">()</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">a</span><span class="p">())</span>
+<span class="c"># output: &lt;__main__.A object at 0x10e10ceb8&gt;</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">a</span><span class="p">(</span><span class="n">a</span><span class="p">))</span>
+<span class="c"># output: &lt;__main__.A object at 0x10e10ceb8&gt;</span>
+</code></pre></div></div>
+
+<p>然后我要写个 <code class="highlighter-rouge">classmethod</code>。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">ClassMethod</span><span class="p">(</span><span class="n">Method</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">owner</span><span class="p">:</span>
+            <span class="n">partial</span> <span class="o">=</span> <span class="k">lambda</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">owner</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ClassMethod</span><span class="p">(</span><span class="n">partial</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+</code></pre></div></div>
+
+<p>试一下：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">A</span><span class="o">.</span><span class="n">a</span><span class="p">()</span>
+<span class="c"># output: __main__.A</span>
+
+<span class="n">A</span><span class="p">()</span><span class="o">.</span><span class="n">a</span><span class="p">()</span>
+<span class="c"># output: __main__.A</span>
+</code></pre></div></div>
+
+<p>然后实现一个 property：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">Property</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">func</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setter_func</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">instance</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">instance</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">setter</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="nb">AttributeError</span><span class="p">(</span><span class="s">"can't set attribute"</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">setter_func</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setter_func</span> <span class="o">=</span> <span class="n">func</span>
+</code></pre></div></div>
+
+<p>不设置 <code class="highlighter-rouge">setter</code> 时应该报错：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="nd">@Property</span>
+    <span class="k">def</span> <span class="nf">a</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">A</span><span class="p">()</span>
+<span class="k">print</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">a</span><span class="p">)</span>
+<span class="c"># output: &lt;__main__.A object at 0x10e104b70&gt;</span>
+
+<span class="n">a</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="c"># output: AttributeError: can't set attribute</span>
+</code></pre></div></div>
+
+<p>设置后应该会检查：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_a</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="nd">@Property</span>
+    <span class="k">def</span> <span class="nf">a</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_a</span>
+
+    <span class="nd">@a.setter</span>
+    <span class="k">def</span> <span class="nf">a_setter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="nb">ValueError</span><span class="p">(</span><span class="s">'property a must be instance of int'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_a</span> <span class="o">=</span> <span class="n">value</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">A</span><span class="p">()</span>
+<span class="k">print</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">a</span><span class="p">)</span>
+<span class="c"># output: 0</span>
+
+<span class="n">a</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="k">print</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">a</span><span class="p">)</span>
+<span class="c"># output: 100</span>
+
+<span class="n">a</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="s">'100'</span>
+<span class="c"># output: ValueError: property a must be instance of int</span>
+</code></pre></div></div>
+
+<p>说到 property，我该如何实现一个既是类方法也是属性方法的方法呢？
+它看起来应该是这样的：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="nd">@property</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">a</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">cls</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">a</span><span class="p">)</span>
+<span class="c"># expected: &lt;class '__main__.A'&gt;</span>
+</code></pre></div></div>
+
+<p>然而 <code class="highlighter-rouge">classmethod</code> 套 <code class="highlighter-rouge">property</code> 是不 work 的。
+正确的做法当然是自己写描述符啊。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">ClassProperty</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">func</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">owner</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">(</span><span class="n">owner</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+
+<span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="nd">@ClassProperty</span>
+    <span class="k">def</span> <span class="nf">a</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">cls</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">a</span><span class="p">)</span>
+<span class="c"># output: &lt;class '__main__.A'&gt;</span>
+</code></pre></div></div>
+
+<p>最后终于到了 super。
+先看 docstring:</p>
+
+<ol>
+  <li>super() -&gt; same as super(__class__, &lt;first argument&gt;)</li>
+  <li>super(type) -&gt; unbound super object</li>
+  <li>super(type, obj) -&gt; bound super object; requires isinstance(obj, type)</li>
+  <li>super(type, type2) -&gt; bound super object; requires issubclass(type2, type)</li>
+</ol>
+
+<p>先从第三个开始实现：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">inspect</span> <span class="kn">import</span> <span class="n">isclass</span>
+
+<span class="k">class</span> <span class="nc">InstanceBoundSuper</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="nb">TypeError</span><span class="p">(</span><span class="s">'super(type, obj): obj must be an instance of type'</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__self_class__</span> <span class="o">=</span> <span class="nb">type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__self__</span> <span class="o">=</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="n">mro</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__self_class__</span><span class="o">.</span><span class="n">mro</span><span class="p">()</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">mro</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__self_class__</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">mro</span><span class="p">)):</span>
+            <span class="n">klass</span> <span class="o">=</span> <span class="n">mro</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">klass</span><span class="o">.</span><span class="n">__dict__</span><span class="p">:</span>
+                <span class="n">raw_method</span> <span class="o">=</span> <span class="n">klass</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">raw_method</span><span class="o">.</span><span class="n">__get__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__self__</span><span class="p">)</span>
+	<span class="k">raise</span> <span class="nb">AttributeError</span><span class="p">(</span><span class="s">'no attribute </span><span class="si">%</span><span class="s">s'</span> <span class="o">%</span><span class="n">s</span> <span class="n">attr</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">super_</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="nb">type</span><span class="p">,</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">args</span>
+	<span class="k">return</span> <span class="n">InstanceBoundSuper</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>思路还是很清晰的，用 <code class="highlighter-rouge">__self_class__</code> 和 <code class="highlighter-rouge">__self__</code> 存储，然后用 <code class="highlighter-rouge">mro</code> 搜索 <code class="highlighter-rouge">__self_class__</code> 之后的类中第一个在其字典空间中有属性名称的类，然后绑定。
+(这里无视了 <code class="highlighter-rouge">super</code> 搜索非描述符的情况)</p>
+
+<p>然后可以实现第四个功能：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">inspect</span> <span class="kn">import</span> <span class="n">isclass</span>
+
+<span class="k">class</span> <span class="nc">ClassBoundSuper</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">type1</span><span class="p">,</span> <span class="n">type2</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">type2</span><span class="p">,</span> <span class="n">type1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="nb">TypeError</span><span class="p">(</span><span class="s">'super(type1, type2): type2 must be an subclass of type1'</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__self_class__</span> <span class="o">=</span> <span class="n">type1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__self__</span> <span class="o">=</span> <span class="n">type2</span>
+
+    <span class="k">def</span> <span class="nf">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="n">mro</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__self_class__</span><span class="o">.</span><span class="n">mro</span><span class="p">()</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">mro</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__self_class__</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">mro</span><span class="p">)):</span>
+            <span class="n">klass</span> <span class="o">=</span> <span class="n">mro</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">klass</span><span class="o">.</span><span class="n">__dict__</span><span class="p">:</span>
+                <span class="n">raw_method</span> <span class="o">=</span> <span class="n">klass</span><span class="o">.</span><span class="n">__dict__</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">raw_method</span><span class="o">.</span><span class="n">__get__</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__self__</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">super_</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="nb">type</span><span class="p">,</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="k">if</span> <span class="n">isclass</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">ClassBoundSuper</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">InstanceBoundSuper</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+</code></pre></div></div>
+<p>有变化的地方是 <code class="highlighter-rouge">__getattr__</code> 最后调用 <code class="highlighter-rouge">__get__</code> 时传入 <code class="highlighter-rouge">owner</code> 参数而不是 <code class="highlighter-rouge">instance</code> 参数。</p>
+
+<p>有了这两项实现应该已经可以 cover 绝大部分正常的使用了：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">ai</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">__class__</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">ac</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">__class__</span><span class="p">,</span> <span class="n">cls</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">B</span><span class="p">(</span><span class="n">A</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="n">b</span> <span class="o">=</span> <span class="n">B</span><span class="p">()</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">super_</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">ai</span><span class="p">())</span>
+<span class="c"># output: &lt;class '__main__.A'&gt; &lt;__main__.B object at 0x10653c7b8&gt;</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">super_</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span><span class="o">.</span><span class="n">ac</span><span class="p">())</span>
+<span class="c"># output: &lt;class '__main__.A'&gt; &lt;class '__main__.B'&gt;</span>
+</code></pre></div></div>
+
+<p>最后是丧心病狂是功能二。我们要实现的功能应该是这样的：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">a</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">__class__</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">B</span><span class="p">:</span>
+    <span class="k">pass</span>
+
+<span class="n">B</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">B</span><span class="p">)</span>
+
+<span class="n">b</span> <span class="o">=</span> <span class="n">B</span><span class="p">()</span>
+<span class="k">print</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">parent</span><span class="p">)</span>
+<span class="c"># output: &lt;super: __main__.B, &lt;__main__.B at 0x10e0b7c88&gt;&gt;</span>
+
+<span class="k">print</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">a</span><span class="p">())</span>
+<span class="c"># output: &lt;class '__main__.A'&gt; &lt;__main__.B object at 0x10e17a9b0&gt;</span>
+</code></pre></div></div>
+
+<p>实现起来应该不会特别复杂。</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">UnboundSuper</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">klass</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">klass</span> <span class="o">=</span> <span class="n">klass</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">instance</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">BoundSuper</span><span class="p">(</span><span class="n">owner</span><span class="p">,</span> <span class="n">instance</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+
+<span class="k">def</span> <span class="nf">super_</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="nb">type</span><span class="p">,</span> <span class="n">obj</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="k">if</span> <span class="n">isclass</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">ClassBoundSuper</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">InstanceBoundSuper</span><span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">UnboundSuper</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</code></pre></div></div>
+
+<p>那么现在再回头看一下当初实现的 <code class="highlighter-rouge">super</code> 有什么问题。</p>
+
+<p>一开始我们是这样来使用 <code class="highlighter-rouge">super</code> 的：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">record_subclasses</span><span class="p">(</span><span class="n">klass</span><span class="p">):</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">__init_subclass__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kws</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span><span class="o">.</span><span class="n">__init_subclass__</span><span class="p">(</span><span class="o">**</span><span class="n">kws</span><span class="p">)</span>
+        <span class="n">cls</span><span class="o">.</span><span class="n">subclasses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cls</span><span class="p">)</span>
+
+    <span class="n">klass</span><span class="o">.</span><span class="n">subclasses</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">klass</span><span class="o">.</span><span class="n">__init_subclass__</span> <span class="o">=</span> <span class="n">__init_subclass__</span>
+    <span class="k">return</span> <span class="n">klass</span>
+</code></pre></div></div>
+
+<p>注意里面 <code class="highlighter-rouge">super(cls).__init_subclass__</code>，这样的用法是完全错误的。<code class="highlighter-rouge">super(type)</code> 的用法已经在上文阐述，基本只会作为描述符定义在类的字典空间从而使用基类方法这一用途，正常情况下都应该使用双参数或无参数的 <code class="highlighter-rouge">super</code> 指定 <code class="highlighter-rouge">从哪个类往上搜索 mro</code> 和 <code class="highlighter-rouge">绑定哪个对象</code>。这里没有出现异常的唯一原因是 <code class="highlighter-rouge">__init_subclass__</code> 是一个特殊方法，<code class="highlighter-rouge">super</code> 对象继承自 <code class="highlighter-rouge">object</code> 是有这个方法的，只是什么都不干。如果依赖 <code class="highlighter-rouge">mro</code> 上游的某个 <code class="highlighter-rouge">__init_subclass__</code> 实现，那么这里会出现问题；或者这里不是一个特殊方法，那么会立刻报错 <code class="highlighter-rouge">AttributeError: 'super' object has no attribute</code>。</p>
+
+<p>可以回头看看去年的 <a href="http://manjusaka.itscoder.com/2016/11/18/Someone-tell-me-that-you-think-Python-is-simple/">听说你会 Python</a>，其中有最后一道题是希望用元类为类添加 <code class="highlighter-rouge">__new__</code> 方法从而变为单例。那里的出错点也是类似，因为 <code class="highlighter-rouge">__new__</code> 是一个隐式的静态方法：</p>
+
+<blockquote>
+  <p>__new__() is a static method (special-cased so you need not declare it as such) that takes the class of which an instance was requested as its first argument.</p>
+</blockquote>
+
+<p>(by https://docs.python.org/3/reference/datamodel.html#object.__new__)</p>
+
+<p>关于这点连 Fluent Python 都搞错了，书中阐述说 <code class="highlighter-rouge">__new__</code> 是一个类方法，这是错误的。</p>
+
+<p>就是这样。</p>
+
+<p>经过这一篇博客，我感到自己离 <strong>装逼如风、常伴吾身</strong> 的层次太远了，我要坦白，其实我不会 Python。</p>
+
+  </div>
+
+  
+</article>
+
+      </div>
+    </main>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">小生境</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li>
+            
+              jschwinger23
+            
+            </li>
+            
+            <li><a href="mailto:greyschwinger@gmail.com">greyschwinger@gmail.com</a></li>
+            
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/jschwinger23"><span class="icon icon--github"><svg viewBox="0 0 16 16" width="16px" height="16px"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">jschwinger23</span></a>
+
+          </li>
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>Live to tell
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
