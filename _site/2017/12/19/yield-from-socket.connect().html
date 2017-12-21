@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/assets/main.css">
+  <link rel="alternate" type="application/rss+xml" title="小生境" href="/feed.xml">
+  
+</head>
+
+
+  <body>
+
+    <header class="site-header" role="banner">
+
+  <div class="wrapper">
+    
+    
+    <a class="site-title" href="/">小生境</a>
+  
+    
+      <nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+              <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+              <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger">
+          
+            
+            
+          
+            
+            
+          
+            
+            
+          
+        </div>
+      </nav>
+    
+  </div>
+</header>
+
+
+    <main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline"> yield from socket.connect()</h1>
+    <p class="post-meta">
+      <time datetime="2017-12-19T00:00:00+08:00" itemprop="datePublished">
+        
+        2017-12-19
+      </time>
+      </p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <p>在我还很年少幼齿的时候，突然有一天看到 Tornado，它居然在文档里说它的异步代码是酱紫的：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">tornado</span> <span class="kn">import</span> <span class="n">gen</span>
+
+<span class="nd">@gen.coroutine</span>
+<span class="k">def</span> <span class="nf">fetch_coroutine</span><span class="p">(</span><span class="n">url</span><span class="p">):</span>
+    <span class="n">http_client</span> <span class="o">=</span> <span class="n">AsyncHTTPClient</span><span class="p">()</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">http_client</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="n">gen</span><span class="o">.</span><span class="n">Return</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">body</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>太颠覆性了，对我的冲击无异于初一熬夜刷完伊藤润二《旋涡》，我整个人都陷入了巨大的幸福的旋涡之中。</p>
+
+<p>后来我尝试努力去看它的源码，试图理清它背后做的事情，然而完全没有头绪。这个未解之谜被我列为 2017 年度计划之一。</p>
+
+<p>Time goes by, so slowly.</p>
+
+<hr />
+<p><br /></p>
+
+<p>今天我要做的事情，是实现这样一个模块 <code class="highlighter-rouge">Aevent</code>（名字毫无疑问抄袭 <code class="highlighter-rouge">Gevent</code> 这种天才绝伦的库，就和垃圾 JavaScript 抄袭<del>天才绝伦的</del> Java 一样），它提供了以下的 API:</p>
+
+<ol>
+  <li><code class="highlighter-rouge">aevent.monkey.patch_socket()</code>，毫无疑问抄袭天才绝伦的 <code class="highlighter-rouge">gevent.monkey.patch_socket()</code>，你可以简单理解为把标准库的 <code class="highlighter-rouge">socket.socket</code> 变成一个奇怪的东西。</li>
+  <li><code class="highlighter-rouge">aevent.spawn</code>，毫无疑问抄袭天才绝伦的 <code class="highlighter-rouge">gevent.spawn</code>，你可以简单理解为新创建一个协程进入主事件循环。</li>
+  <li>需要 explicit 对有网络调用（有 IO Blocking）的地方使用 <code class="highlighter-rouge">yield from</code>，示范：<code class="highlighter-rouge">resp = yield from requests.get()</code></li>
+  <li>没有了</li>
+</ol>
+
+<p>然后你就拥有了魔法，在单进程单线程里多路复用地运行你的花式网络调用。</p>
+
+<p>不妨先看一下，这是我们的一个简单的 TCP Echo Server，干了很简单的几件事：</p>
+
+<ol>
+  <li>监听 8000 端口</li>
+  <li>处理 client 的连接，接收 client 发送过来的东西</li>
+  <li>转发请求到一个号称 slow echo server 的服务上, which 也是一个 TCP Echo Server，只不过对每个请求需要睡 1s 才能响应。</li>
+  <li>收到 slow echo server 的响应，把消息回复给 client</li>
+</ol>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">from</span> <span class="nn">logging</span> <span class="kn">import</span> <span class="n">getLogger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+<span class="n">SLOW_ECHO_SERVER_PORT</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">'SLOW_ECHO_SERVER_PORT'</span><span class="p">,</span> <span class="mi">9000</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">Server</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">backlog</span><span class="o">=</span><span class="mi">500</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backlog</span> <span class="o">=</span> <span class="n">backlog</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">SOL_SOCKET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SO_REUSEADDR</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ready</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">ready</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">bind</span><span class="p">((</span><span class="s">''</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backlog</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">'listening on port </span><span class="si">%</span><span class="s">s'</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">serve_forever</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">peer</span><span class="p">,</span> <span class="n">addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handle_peer</span><span class="p">(</span><span class="n">peer</span><span class="p">,</span> <span class="n">addr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">handle_peer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">peer</span><span class="p">,</span> <span class="n">addr</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="nb">NotImplementedError</span>
+
+
+<span class="k">class</span> <span class="nc">M0Server</span><span class="p">(</span><span class="n">Server</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">handle_peer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">peer</span><span class="p">,</span> <span class="n">addr</span><span class="p">):</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="n">peer</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">'M0 echo server recv </span><span class="si">%</span><span class="s">s from peer </span><span class="si">%</span><span class="s">s'</span><span class="p">,</span> <span class="n">words</span><span class="p">,</span> <span class="n">addr</span><span class="p">)</span>
+        <span class="n">peer</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request_slow</span><span class="p">(</span><span class="n">words</span><span class="p">))</span>
+        <span class="n">peer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">request_slow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">'prepare to relay to slow echo server'</span><span class="p">)</span>
+        <span class="n">req_sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="n">req_sock</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">''</span><span class="p">,</span> <span class="n">SLOW_ECHO_SERVER_PORT</span><span class="p">))</span>
+        <span class="n">req_sock</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">req_sock</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">'__main__'</span><span class="p">:</span>
+    <span class="n">server</span> <span class="o">=</span> <span class="n">M0Server</span><span class="p">(</span><span class="mi">8000</span><span class="p">)</span>
+    <span class="n">server</span><span class="o">.</span><span class="n">serve_forever</span><span class="p">()</span>
+
+</code></pre></div></div>
+
+<p>对就是这样。为了方便复用我直接写了基类，之后的代码直接在此之上 override。</p>
+
+<p>先来随手测一下并发处理能力：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">(</span>aevent<span class="o">)</span> lzc:aevent zc<span class="nv">$ </span>make M0
+python <span class="nt">-m</span> src.M0.server
+<span class="o">[</span>INFO][2017-12-22 00:46:36,859][server][listening on port 8000]
+<span class="o">[</span>INFO][2017-12-22 00:47:06,057][server][M0 <span class="nb">echo </span>server recv b<span class="s1">'123\n'</span> from peer <span class="o">(</span><span class="s1">'127.0.0.1'</span>, 54505<span class="o">)]</span>
+<span class="o">[</span>INFO][2017-12-22 00:47:06,057][server][prepare to relay to slow <span class="nb">echo </span>server]
+<span class="o">[</span>INFO][2017-12-22 00:47:07,062][server][M0 <span class="nb">echo </span>server recv b<span class="s1">'123\n'</span> from peer <span class="o">(</span><span class="s1">'127.0.0.1'</span>, 54506<span class="o">)]</span>
+<span class="o">[</span>INFO][2017-12-22 00:47:07,062][server][prepare to relay to slow <span class="nb">echo </span>server]
+<span class="o">[</span>INFO][2017-12-22 00:47:08,065][server][M0 <span class="nb">echo </span>server recv b<span class="s1">'123\n'</span> from peer <span class="o">(</span><span class="s1">'127.0.0.1'</span>, 54508<span class="o">)]</span>
+<span class="o">[</span>INFO][2017-12-22 00:47:08,065][server][prepare to relay to slow <span class="nb">echo </span>server]
+</code></pre></div></div>
+
+<p>实在是惨不忍睹，每一个请求都必须等到上一个请求完全处理完毕才能被服务器处理，就算每个请求有一秒的时间阻塞在 IO 上、等待一个不知道什么时候才能回来的 TCP 消息。</p>
+
+<p>是时候改变这种窘境了！</p>
+
+<p>首先我们来看一下，使用 gevent 来改造的话，大概是以下这样：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">gevent</span>
+<span class="kn">from</span> <span class="nn">gevent</span> <span class="kn">import</span> <span class="n">monkey</span>
+<span class="n">monkey</span><span class="o">.</span><span class="n">patch_socket</span><span class="p">()</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">from</span> <span class="nn">logging</span> <span class="kn">import</span> <span class="n">getLogger</span>
+
+<span class="kn">from</span> <span class="nn">..common.server</span> <span class="kn">import</span> <span class="n">Server</span>
+
+<span class="n">SLOW_ECHO_SERVER_PORT</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">'SLOW_ECHO_SERVER_PORT'</span><span class="p">,</span> <span class="mi">9000</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">M1Server</span><span class="p">(</span><span class="n">Server</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">serve_forever</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">peer</span><span class="p">,</span> <span class="n">addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+            <span class="n">gevent</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handle_peer</span><span class="p">,</span> <span class="n">peer</span><span class="p">,</span> <span class="n">addr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">handle_peer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">peer</span><span class="p">,</span> <span class="n">addr</span><span class="p">):</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="n">peer</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">'M1 echo server recv </span><span class="si">%</span><span class="s">s from peer </span><span class="si">%</span><span class="s">s'</span><span class="p">,</span> <span class="n">words</span><span class="p">,</span> <span class="n">addr</span><span class="p">)</span>
+        <span class="n">peer</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request_slow</span><span class="p">(</span><span class="n">words</span><span class="p">))</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">'M1 echo server response peer </span><span class="si">%</span><span class="s">s with </span><span class="si">%</span><span class="s">s'</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">words</span><span class="p">)</span>
+        <span class="n">peer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">request_slow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">'prepare to relay to slow echo server'</span><span class="p">)</span>
+        <span class="n">req_sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="n">req_sock</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">''</span><span class="p">,</span> <span class="n">SLOW_ECHO_SERVER_PORT</span><span class="p">))</span>
+        <span class="n">req_sock</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">req_sock</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">'__main__'</span><span class="p">:</span>
+    <span class="n">server</span> <span class="o">=</span> <span class="n">M1Server</span><span class="p">(</span><span class="mi">8000</span><span class="p">)</span>
+    <span class="n">gevent</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="n">server</span><span class="o">.</span><span class="n">serve_forever</span><span class="p">())</span>
+</code></pre></div></div>
+
+<p>对主要的代码逻辑几乎一字不改，完美，再测一下性能：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">(</span>aevent<span class="o">)</span> lzc:aevent zc<span class="nv">$ </span>make M1
+python <span class="nt">-m</span> src.M1.server
+<span class="o">[</span>INFO][2017-12-22 00:50:16,968][server][listening on port 8000]
+<span class="o">[</span>INFO][2017-12-22 00:50:22,097][server][M1 <span class="nb">echo </span>server recv b<span class="s1">'123\n'</span> from peer <span class="o">(</span><span class="s1">'127.0.0.1'</span>, 54531<span class="o">)]</span>
+<span class="o">[</span>INFO][2017-12-22 00:50:22,098][server][prepare to relay to slow <span class="nb">echo </span>server]
+<span class="o">[</span>INFO][2017-12-22 00:50:22,134][server][M1 <span class="nb">echo </span>server recv b<span class="s1">'123\n'</span> from peer <span class="o">(</span><span class="s1">'127.0.0.1'</span>, 54532<span class="o">)]</span>
+<span class="o">[</span>INFO][2017-12-22 00:50:22,134][server][prepare to relay to slow <span class="nb">echo </span>server]
+<span class="o">[</span>INFO][2017-12-22 00:50:22,134][server][M1 <span class="nb">echo </span>server recv b<span class="s1">'123\n'</span> from peer <span class="o">(</span><span class="s1">'127.0.0.1'</span>, 54534<span class="o">)]</span>
+<span class="o">[</span>INFO][2017-12-22 00:50:22,135][server][prepare to relay to slow <span class="nb">echo </span>server]
+<span class="o">[</span>INFO][2017-12-22 00:50:23,139][server][M1 <span class="nb">echo </span>server response peer <span class="o">(</span><span class="s1">'127.0.0.1'</span>, 54532<span class="o">)</span> with b<span class="s1">'123\n'</span><span class="o">]</span>
+<span class="o">[</span>INFO][2017-12-22 00:50:24,140][server][M1 <span class="nb">echo </span>server response peer <span class="o">(</span><span class="s1">'127.0.0.1'</span>, 54534<span class="o">)</span> with b<span class="s1">'123\n'</span><span class="o">]</span>
+<span class="o">[</span>INFO][2017-12-22 00:50:25,146][server][M1 <span class="nb">echo </span>server response peer <span class="o">(</span><span class="s1">'127.0.0.1'</span>, 54531<span class="o">)</span> with b<span class="s1">'123\n'</span><span class="o">]</span>
+</code></pre></div></div>
+
+<p>wow，服务器阻塞在 IO 上的同时也能够处理其他的请求，真是太感人了。</p>
+
+<p>那么我现在想做的事情呢，是用 aevent 实现这样的代码：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">aevent</span>
+<span class="kn">from</span> <span class="nn">.aevent</span> <span class="kn">import</span> <span class="n">monkey</span>
+<span class="n">monkey</span><span class="o">.</span><span class="n">patch_socket</span><span class="p">()</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">from</span> <span class="nn">logging</span> <span class="kn">import</span> <span class="n">getLogger</span>
+
+<span class="kn">from</span> <span class="nn">..common.server</span> <span class="kn">import</span> <span class="n">Server</span>
+
+<span class="n">SLOW_ECHO_SERVER_PORT</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">'SLOW_ECHO_SERVER_PORT'</span><span class="p">,</span> <span class="mi">9000</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">M4Server</span><span class="p">(</span><span class="n">Server</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">serve_forever</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">peer</span><span class="p">,</span> <span class="n">addr</span> <span class="o">=</span> <span class="k">yield</span> <span class="k">from</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock</span><span class="o">.</span><span class="n">accept</span><span class="p">()</span>
+            <span class="n">aevent</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handle_peer</span><span class="p">,</span> <span class="n">peer</span><span class="p">,</span> <span class="n">addr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">handle_peer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">peer</span><span class="p">,</span> <span class="n">addr</span><span class="p">):</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="k">yield</span> <span class="k">from</span> <span class="n">peer</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">'M4 echo server recv </span><span class="si">%</span><span class="s">s from peer </span><span class="si">%</span><span class="s">s'</span><span class="p">,</span> <span class="n">words</span><span class="p">,</span> <span class="n">addr</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="k">from</span> <span class="n">peer</span><span class="o">.</span><span class="n">send</span><span class="p">((</span><span class="k">yield</span> <span class="k">from</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_slow</span><span class="p">(</span><span class="n">words</span><span class="p">)))</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">'M1 echo server response peer </span><span class="si">%</span><span class="s">s with </span><span class="si">%</span><span class="s">s'</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">words</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="k">from</span> <span class="n">peer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">request_slow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">'prepare to relay to slow echo server'</span><span class="p">)</span>
+        <span class="n">req_sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="k">from</span> <span class="n">req_sock</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s">''</span><span class="p">,</span> <span class="n">SLOW_ECHO_SERVER_PORT</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="k">from</span> <span class="n">req_sock</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="k">yield</span> <span class="k">from</span> <span class="n">req_sock</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">))</span>
+
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">'__main__'</span><span class="p">:</span>
+    <span class="n">m4_server</span> <span class="o">=</span> <span class="n">M4Server</span><span class="p">(</span><span class="mi">8000</span><span class="p">)</span>
+    <span class="n">aevent</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="n">m4_server</span><span class="o">.</span><span class="n">serve_forever</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>emm，比 gevent 糟糕一点（其实是糟糕太多了，然而我实在不愿意用 ast 魔改，那样的东西就算做出来也只是玩具，因为你的 exception traceback 会惨到不能看，Sentry 一类的东西完全跪了。）</p>
+
+<p>可以看到比 gevent 逊色的地方在于，需要手动 <code class="highlighter-rouge">yield from</code> 去声明 <code class="highlighter-rouge">这是一个 IO 阻塞的函数调用</code>，非常低级。但是很多（or 有些）时候我们就是希望这样笨拙的声明，thus 我们才能控制一切阻塞点。</p>
+
+<p><code class="highlighter-rouge">Explict is better than implicit</code>，行了这地我洗不下去了。</p>
+
+<p>所以不管你多么 diss 这个 API，我们的目标还是明确了。</p>
+
+<p>提醒一下看官，这个 API 可比 Tornado 高到不知道哪里去了哦：</p>
+
+<ol>
+  <li>Tornado 必须用奇怪的装饰器 <code class="highlighter-rouge">gen.coroutine</code> 把从上往下的调用栈上的一切函数都 wrap 起来，而 Aevent 完全不用</li>
+  <li>Tornado 必须用 <code class="highlighter-rouge">IOLoop().run_forever()</code> 啥的来声明 <code class="highlighter-rouge">我要开始滚动历史的车轮啦</code>，而 Aevent 完全不用</li>
+</ol>
+
+<p>那么我们开始。</p>
+
+  </div>
+
+  
+</article>
+
+      </div>
+    </main>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">小生境</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li>
+            
+              jschwinger23
+            
+            </li>
+            
+            <li><a href="mailto:greyschwinger@gmail.com">greyschwinger@gmail.com</a></li>
+            
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/jschwinger23"><span class="icon icon--github"><svg viewBox="0 0 16 16" width="16px" height="16px"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">jschwinger23</span></a>
+
+          </li>
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>Live to tell
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
