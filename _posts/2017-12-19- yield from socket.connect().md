@@ -226,3 +226,9 @@ emm，比 gevent 糟糕一点（其实是糟糕太多了，然而我实在不愿
 2. Tornado 必须用 `IOLoop().run_forever()` 啥的来声明 `我要开始滚动历史的车轮啦`，而 Aevent 完全不用
 
 那么我们开始。
+
+突然不想详细解说了，想围观实现的请移步 https://github.com/jschwinger23/aevent
+
+突然不理解那些用 Tornado 改造一个 Requests 就能取一个好听的名字发布出来骗星星的行为艺术到底有什么价值：不就是一堆体力活么。
+
+逃。
