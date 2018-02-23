@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/assets/main.css">
+  <link rel="alternate" type="application/rss+xml" title="小生境" href="/feed.xml">
+  
+</head>
+
+
+  <body>
+
+    <header class="site-header" role="banner">
+
+  <div class="wrapper">
+    
+    
+    <a class="site-title" href="/">小生境</a>
+  
+    
+      <nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path fill="#424242" d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.031C17.335,0,18,0.665,18,1.484L18,1.484z"/>
+              <path fill="#424242" d="M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0c0-0.82,0.665-1.484,1.484-1.484 h15.031C17.335,6.031,18,6.696,18,7.516L18,7.516z"/>
+              <path fill="#424242" d="M18,13.516C18,14.335,17.335,15,16.516,15H1.484C0.665,15,0,14.335,0,13.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.031C17.335,12.031,18,12.696,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger">
+          
+            
+            
+          
+            
+            
+          
+            
+            
+          
+        </div>
+      </nav>
+    
+  </div>
+</header>
+
+
+    <main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline">Ghost in the Shell</h1>
+    <p class="post-meta">
+      <time datetime="2018-02-23T00:00:00+08:00" itemprop="datePublished">
+        
+        2018-02-23
+      </time>
+      </p>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <blockquote>
+  <p>Shell programming is a 1950s juke box.  –Larry Wall</p>
+</blockquote>
+
+<p>Shell 编程 (以下默认为 Bourne Again Shell) 是有趣的，就连 Larry Wall 大神都如是说。接下来的故事大家都知道了，大神嫌 Shell 可读性太高发明了 Perl 与 Perl6，然后赶上 Web1.0 的顺风车站稳 TIOBE 编程语言排行榜前 10，居然到现在都还没死。我是说 Perl。</p>
+
+<p>我是在 2015 年末才开始开始接触到 Shell，吃了多年狗屎，终于总结出一套日常使用 Shell 批处理文件与文本的套路。所以这篇文章的真实标题其实应该是 <code class="highlighter-rouge">Shell in Daily Use</code> 什么的..</p>
+
+<hr />
+<h3 id="1-遍历文件">1. 遍历文件</h3>
+
+<p>遍历文件绝对是让人头疼的一件事情，远远比我想象得复杂。</p>
+
+<h4 id="11-find">1.1 <code class="highlighter-rouge">find</code></h4>
+
+<p>首先是 <code class="highlighter-rouge">find</code> 命令（以下默认为 GNU Findutils，建议 macOS 用户<del>去死</del>运行 <code class="highlighter-rouge">brew install findutils --with-default-names</code>），其中最常用的选项大概是 <code class="highlighter-rouge">-name</code>，比方说递归遍历当前目录下的所有 py 文件然后打印出来：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span>
+</code></pre></div></div>
+
+<p>然而不要忘了另外几个同样有用的选项 <code class="highlighter-rouge">-path</code> 与 <code class="highlighter-rouge">-regex</code>，以及它们的 case-ignore 版本 <code class="highlighter-rouge">-iname</code> / <code class="highlighter-rouge">-ipath</code> / <code class="highlighter-rouge">-iregex</code>：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 在 tests 目录下的 py 文件</span>
+find <span class="nb">.</span> <span class="nt">-path</span> <span class="s1">'*/tests/*.py'</span>
+
+<span class="c"># 查找所有的名字叫做 folder 的 jpg，不区分大小写</span>
+find <span class="nb">.</span> <span class="nt">-iname</span> folder.jpg
+</code></pre></div></div>
+
+<p>使用 <code class="highlighter-rouge">-regex</code> 时建议通过 <code class="highlighter-rouge">-regextype</code> 选择正则引擎，默认的 <code class="highlighter-rouge">findutils-default</code> 引擎简直可以去死了：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 查找所有的在 `**/test/` 或者 `**/test/` 之下的 py 文件或者 pyc 文件</span>
+find <span class="nb">.</span> <span class="nt">-regex</span> <span class="s1">'.*/tests?/.*\.pyc?'</span>  <span class="nt">-regextype</span> posix-extended
+
+<span class="c"># 查找所有的名字叫做 folder 的 jpg 或者 png，不区分大小写</span>
+find <span class="nb">.</span> <span class="nt">-iregex</span> <span class="s1">'.*folder.\(jpg\|png\)'</span> <span class="nt">-regextype</span> posix-extended
+</code></pre></div></div>
+
+<p>熟练使用 <code class="highlighter-rouge">-regex</code> 可以让你少背很多文档，比如由于 <code class="highlighter-rouge">find</code> 没有 <code class="highlighter-rouge">-exclude</code>，所以排除目录的话你要么用 <code class="highlighter-rouge">-prune</code> 要么用 <code class="highlighter-rouge">-regex</code> 自己撸：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 排除 .git 目录之 prune 党</span>
+find <span class="nb">.</span> <span class="nt">-path</span> <span class="s1">'*/.git/*'</span> <span class="nt">-prune</span> <span class="nt">-o</span> <span class="nt">-print</span>
+
+<span class="c"># 排除 .git 目录之 regex 党</span>
+find <span class="nb">.</span> <span class="nt">-regex</span> <span class="s1">'./\([^.]\|\.[^g]\|\.g[^i]\|\.gi[^t]\).*'</span> <span class="nt">-regextype</span> posix-extended
+</code></pre></div></div>
+
+<p>严格来说，上面的 regex 党的代码并不等价 prune 党，regex 党只是排除了 <code class="highlighter-rouge">./.git/</code>，而 prune 排除了 <code class="highlighter-rouge">./**/.git/</code>；但是因为就算是 <code class="highlighter-rouge">-regextype posix-extended</code> 也不支持惰性 <code class="highlighter-rouge">*</code> 与 <code class="highlighter-rouge">+</code>，更别说环视了，所以这就是我们能做到的最好的程度了。</p>
+
+<p>或者是只遍历到二级子目录：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 遍历二级子目录之 maxdepth 党</span>
+find <span class="nb">.</span> <span class="nt">-maxdepth</span> 2
+
+<span class="c"># 遍历二级子目录之 regex 党</span>
+find <span class="nb">.</span> <span class="nt">-regex</span> <span class="s1">'./[^/]*/[^/]*'</span>
+</code></pre></div></div>
+
+<p>严格来说，上面 regex 党的代码并不等价 prune 党，regex 严格搜索二级子目录，而 maxdepth 搜索了一级目录与二级，此处 regex 做的事情等价于 <code class="highlighter-rouge">find . -mindepth 2 -maxdepth 2</code>；并且如果有文件名中包含了 <code class="highlighter-rouge">/</code> 字符也会导致 regex 出事。</p>
+
+<p>建议年轻人通读一遍 <code class="highlighter-rouge">FIND(1)</code> 的 manual，会有心得。</p>
+
+<h4 id="12-for">1.2 <code class="highlighter-rouge">for</code></h4>
+
+<p><code class="highlighter-rouge">find</code> 的强大是毋庸置疑的，但是也不要忽略了 <code class="highlighter-rouge">for</code> 的存在啊，尤其是当我们很清楚我们就是只需要迭代到二级子目录去做一些事情的时候，<code class="highlighter-rouge">for</code> 能规避很多 <code class="highlighter-rouge">find</code> 很蛋疼的痛点，稍后会解释，现在先看如何去遍历文件。</p>
+
+<p>首先是正常遍历：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for </span>filename <span class="k">in</span> <span class="k">*</span><span class="p">;</span> <span class="k">do </span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span>
+</code></pre></div></div>
+
+<p>这里很有趣的地方就是 <code class="highlighter-rouge">*</code> 展开时会转义空格等字符，然后 <code class="highlighter-rouge">"filename"</code> 部分引用（我倾向于称之为 <code class="highlighter-rouge">partial quote</code> 而不是 <code class="highlighter-rouge">double quote</code> 是因为这更加 explict）会保证变量不会被 <code class="highlighter-rouge">$IFS</code> 打断为多个参数传递给函数。</p>
+
+<p>如果有一些过滤条件呢也当然没有问题啦：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 默认就是排除 ./.git 的，因为 * 展开不包括隐藏文件</span>
+
+<span class="c"># 包含 .git 进行遍历</span>
+<span class="k">for </span>filename <span class="k">in</span> <span class="k">*</span> .git<span class="p">;</span> <span class="k">do </span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span>
+
+<span class="c"># 只遍历目录，相当于 find -type d</span>
+<span class="k">for </span>filename <span class="k">in</span> <span class="k">*</span><span class="p">;</span> <span class="k">do</span> <span class="o">[</span> <span class="o">!</span> <span class="nt">-d</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span> <span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="k">continue</span><span class="p">;</span> <span class="nb">echo</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span>
+
+<span class="c"># 只遍历文件名前缀为 test_ 或者 tests_ 的 py 文件</span>
+<span class="k">for </span>filename <span class="k">in</span> <span class="k">*</span>.py<span class="p">;</span> <span class="k">do</span> <span class="o">[[</span> <span class="o">!</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span> <span class="o">=</span>~ test_.<span class="k">*</span>|tests_.<span class="k">*</span> <span class="o">]]</span> <span class="o">&amp;&amp;</span> <span class="k">continue</span><span class="p">;</span> <span class="nb">echo</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span>
+
+<span class="c"># 遍历二级目录</span>
+<span class="k">for </span>dirname <span class="k">in</span> <span class="k">*</span><span class="p">;</span> <span class="k">do for </span>filename <span class="k">in</span> <span class="s2">"</span><span class="nv">$dirname</span><span class="s2">"</span>/<span class="k">*</span><span class="p">;</span> <span class="k">do </span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span><span class="p">;</span> <span class="k">done</span>
+</code></pre></div></div>
+
+<p>几个需要强调的细节如下：</p>
+
+<ol>
+  <li>测试表达式 <code class="highlighter-rouge">[ ... ]</code> 是很容易出错的，请仅仅在使用 operator 的时候使用它，如上面的 <code class="highlighter-rouge">-d</code> 检查是否目录，并且保证所有的变量都被部分引用，以及空格都健在，尤其是方括号与其他字符直接的空格。</li>
+  <li>请使用更加弹性的 <code class="highlighter-rouge">[[ ... ]]</code> 测试表达式，其中常用的操作不仅包括 <code class="highlighter-rouge">==</code> 检查相等，更加包括 <code class="highlighter-rouge">=~</code> 正则表达式匹配。请注意使用 <code class="highlighter-rouge">=~</code> 时请不要引用右侧的正则表达式。</li>
+  <li>部分引用会抑制 <code class="highlighter-rouge">*</code> 展开，所以如果需要拼接二级目录并展开迭代，像上面一样 <code class="highlighter-rouge">for filename in "$dirname"/*</code> 而不要 <code class="highlighter-rouge">"$dirname/*"</code>。</li>
+</ol>
+
+<p>多重条件请务必在条件表达式之外使用短路与 <code class="highlighter-rouge">&amp;&amp;</code> 短路或 <code class="highlighter-rouge">||</code>，类似 <code class="highlighter-rouge">[ expr1 &amp;&amp; expr2 ]</code> 会死得很难看。虽然你可以使用 <code class="highlighter-rouge">-a</code> / <code class="highlighter-rouge">-o</code> operator，但我还是建议统一使用 <code class="highlighter-rouge">&amp;&amp;</code> / <code class="highlighter-rouge">||</code>，无论是 <code class="highlighter-rouge">[ ... ]</code> 还是 <code class="highlighter-rouge">[[ ... ]]</code></p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 多重条件之 ||</span>
+<span class="k">for </span>dirname <span class="k">in</span> <span class="k">*</span><span class="p">;</span> <span class="k">do</span> <span class="o">[</span> <span class="o">!</span> <span class="nt">-d</span> <span class="s2">"</span><span class="nv">$dirname</span><span class="s2">"</span> <span class="o">]</span> <span class="o">||</span> <span class="o">[[</span> <span class="s2">"</span><span class="nv">$dirname</span><span class="s2">"</span> <span class="o">==</span> <span class="s2">"tests"</span> <span class="o">]]</span> <span class="o">&amp;&amp;</span> <span class="k">continue</span><span class="p">;</span> <span class="nb">echo</span> <span class="s2">"</span><span class="nv">$dirname</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span>
+
+<span class="c"># 多重条件之 -o</span>
+<span class="k">for </span>dirname <span class="k">in</span> <span class="k">*</span><span class="p">;</span> <span class="k">do</span> <span class="o">[</span> <span class="o">!</span> <span class="nt">-d</span> <span class="s2">"</span><span class="nv">$dirname</span><span class="s2">"</span> <span class="nt">-o</span> <span class="s2">"</span><span class="nv">$dirname</span><span class="s2">"</span> <span class="o">==</span> <span class="s2">"tests"</span> <span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="k">continue</span><span class="p">;</span> <span class="nb">echo</span> <span class="s2">"</span><span class="nv">$dirname</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span>
+</code></pre></div></div>
+
+<p>如果没有找到匹配模式的文件，a.k.a <code class="highlighter-rouge">*</code> 展开失败，那么会 for 循环依然会进行一次，但是变量被赋值为未展开的值，所以建议对展开失败的情况进行判断：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for </span>filename <span class="k">in </span>not_exist_file<span class="k">*</span><span class="p">;</span> <span class="k">do</span> <span class="o">[</span> <span class="o">!</span> <span class="nt">-e</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span> <span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="k">continue</span><span class="p">;</span> <span class="nb">echo</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span>
+</code></pre></div></div>
+
+<hr />
+<h3 id="2-file-name-handling">2. File Name Handling</h3>
+
+<p>我们可以遍历文件了，但是如何依次引用每个文件的文件名呢？</p>
+
+<h4 id="21-find">2.1 <code class="highlighter-rouge">find</code></h4>
+
+<p>直接使用 <code class="highlighter-rouge">find</code> 的 <code class="highlighter-rouge">-exec</code> 是没问题的，但是会有几个注意事项，先看简单的例子：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 删除所有的 py 文件</span>
+find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-exec</span> rm <span class="o">{}</span> <span class="se">\;</span>
+</code></pre></div></div>
+
+<p>简单来说呢就是 <code class="highlighter-rouge">{}</code> 会被替换为 <code class="highlighter-rouge">find</code> 输出的每个文件名，然后你就可以为所欲为了。最后的 <code class="highlighter-rouge">\;</code> 只是为了不让 Shell 把 <code class="highlighter-rouge">;</code> 解释了，这个 <code class="highlighter-rouge">;</code> 可是要留给 <code class="highlighter-rouge">find</code> 命令去 interprete 的。</p>
+
+<p>不过删除这种事已经可以被 <code class="highlighter-rouge">find -delete</code> 做了，所以如果我们要做更复杂的事情怎么办？比如我们要用 Parameter Substitution 把文件名改一下再输出，<code class="highlighter-rouge">{}</code> 这个破玩意儿肯定是不能 Parameter Substitution 的，但是我们可以利用 <code class="highlighter-rouge">bash -c</code> 来处理：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># 把所有的 py 文件后缀改为 python 再输出</span>
+find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-exec</span> /bin/bash <span class="nt">-c</span> <span class="s1">'echo "${0/%.py/.python}"'</span> <span class="o">{}</span> <span class="se">\;</span>
+</code></pre></div></div>
+
+<p>不熟悉 Shell Parameter Substitution 的朋友建议<del>自杀</del>通读一遍文档，下同。</p>
+
+<p>可以看到用这种套路我们的 <code class="highlighter-rouge">-exec</code> 一下子就变得非常灵活了，我们甚至可以写多条语句和循环在 <code class="highlighter-rouge">bash -c</code> 中，但是需要注意的是 <code class="highlighter-rouge">-exec</code> 调用了子进程，一切调用子进程的都有两个问题：</p>
+
+<ol>
+  <li>环境变量容易坑爹。比如 crond job 动不动就不能执行，多半就是因为环境变量问题，建议 <code class="highlighter-rouge">echo $PATH</code> 并且调用绝对路径。</li>
+  <li>子进程中的变量无法（简单）被父进程使用。比如你在子进程中做了什么奇怪的统计然后想累加到父进程的什么变量上，然后运行完了发现父进程的变量还是一字不变，就是踩了子进程的坑。</li>
+</ol>
+
+<p>不过在执行简单任务上这已经完全足够我们折腾了，比如我有个脚本用来转换 flac 到 mp3，就是简单调用 <code class="highlighter-rouge">bash -c</code> 加上 Parameter Substitution：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.flac'</span> <span class="nt">-exec</span> /bin/bash <span class="nt">-c</span> <span class="s1">'ffmpeg -y -i "$0" "${0%.flac}.mp3"'</span> <span class="o">{}</span> <span class="se">\;</span>
+</code></pre></div></div>
+
+<h4 id="22-xargs">2.2 <code class="highlighter-rouge">xargs</code></h4>
+
+<p>xargs 一直被广大人民群众所喜爱，然后年轻人又经常处理不好奇怪的文件名。</p>
+
+<p>正确使用 xargs 的姿势是 <code class="highlighter-rouge">find -print0 | xargs -0</code> 使用 <code class="highlighter-rouge">\0</code> 字符分隔文件名，避免文件名中包含 <code class="highlighter-rouge">$IFS</code> 的文件搞死你：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-print0</span> | xargs <span class="nt">-0</span> rm <span class="nt">-f</span>
+</code></pre></div></div>
+
+<p>对于稍复杂的情况，和上面 <code class="highlighter-rouge">-exec</code> 一样，祭出 <code class="highlighter-rouge">bash -c</code> 大法：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-print0</span> | xargs <span class="nt">-I</span><span class="o">{}</span> <span class="nt">-0</span> /bin/bash <span class="nt">-c</span> <span class="s1">'echo "${0/%.py/.python}"'</span> <span class="o">{}</span>
+</code></pre></div></div>
+
+<p>那么这样的话上面那个转换 flac 的脚本就变成了这样：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.flac'</span> <span class="nt">-print0</span> | xargs <span class="nt">-I</span><span class="o">{}</span> <span class="nt">-0</span> /bin/bash <span class="nt">-c</span> <span class="s1">'ffmpeg -y -i "$0" "${0%.flac}.mp3"'</span> <span class="o">{}</span>
+</code></pre></div></div>
+
+<p>xargs 最爽的地方就是可以很容易并行，只需要简单加个 <code class="highlighter-rouge">-P</code> 选项，轻轻松松性能翻番：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.flac'</span> <span class="nt">-print0</span> | xargs <span class="nt">-P0</span> <span class="nt">-I</span><span class="o">{}</span> <span class="nt">-0</span> /bin/bash <span class="nt">-c</span> <span class="s1">'ffmpeg -y -i "$0" "${0%.flac}.mp3"'</span> <span class="o">{}</span>
+</code></pre></div></div>
+
+<p>我使用 <code class="highlighter-rouge">-P0</code> 指定使用尽可能多的进程去运行，使用 <code class="highlighter-rouge">TIME(1)</code> 去测试性能，转换一张滚石专辑耗时从 <code class="highlighter-rouge">5m46.635s</code> 跃迁到 <code class="highlighter-rouge">2m36.474s</code>。</p>
+
+<p>然而 <code class="highlighter-rouge">xargs</code> 最大的问题是命令存在一个字符数上限，而 <code class="highlighter-rouge">find -exec</code> 也一样，所以如果特别复杂的命令会有问题，然而一般来说我们不太可能会运行一个 1Kib 的 xargs，而是会写一个 sh 脚本来运行。</p>
+
+<p>我个人的口味来说不喜欢用绝对引用把代码包起来，这会让我的单双引号变得无所适从，所以我愿意用 Here 文档与 Command Substitution 来做这件事：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.flac'</span> <span class="nt">-print0</span> | xargs <span class="nt">-P0</span> <span class="nt">-I</span><span class="o">{}</span> <span class="nt">-0</span> /bin/bash <span class="nt">-c</span> <span class="s2">"</span><span class="k">$(</span><span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+ffmpeg -y -i "</span><span class="nv">$0</span><span class="sh">" "</span><span class="k">${</span><span class="nv">0</span><span class="p">%.flac</span><span class="k">}</span><span class="sh">.mp3"
+</span><span class="no">EOF
+</span><span class="k">)</span><span class="s2">"</span> <span class="o">{}</span>
+</code></pre></div></div>
+
+<p>这样循环啊多重语句啊什么的都可以通过 Here 文档分行，可读性能提高不少，代价是逼格下降不少。</p>
+
+<p>另一个问题是管道总是创建子进程来运行命令，导致的问题是说，如果你希望最终的结果是改变父进程的某个值就会变得非常坑爹了：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">py_cnt</span><span class="o">=</span>0
+find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-print0</span> | xargs <span class="nt">-0</span> /bin/bash <span class="nt">-c</span> <span class="s1">'((py_cnt++))'</span>
+<span class="nb">echo</span> <span class="nv">$py_cnt</span>
+</code></pre></div></div>
+
+<p>上面的代码无论如何输出都是 0，就是因为如此。</p>
+
+<p>我们继续前进。</p>
+
+<h4 id="23-read">2.3 <code class="highlighter-rouge">read</code></h4>
+
+<p>read 一开始我是觉得挺难掌握的，主要是内心有点抗拒，觉得 useless，但是上手后迅速就熟练了，发现真的很好用！</p>
+
+<p>比如说处理 <code class="highlighter-rouge">\0</code> 分隔的输入：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-print0</span> | <span class="k">while </span><span class="nv">IFS</span><span class="o">=</span> <span class="nb">read</span> <span class="nt">-r</span> <span class="nt">-d</span> <span class="s1">''</span> filename<span class="p">;</span> <span class="k">do </span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span>
+</code></pre></div></div>
+
+<p>还是打印 py 文件那一套，主要细节是 <code class="highlighter-rouge">IFS=</code> 保证了 prefix 的 <code class="highlighter-rouge">$IFS</code> 不会被 strip，而 <code class="highlighter-rouge">read -d ''</code> 指明了读取标准输入直到 <code class="highlighter-rouge">\0</code>，然后在 <code class="highlighter-rouge">while</code> 循环体内处理 <code class="highlighter-rouge">$filename</code> 变量就好了。</p>
+
+<p>那么如何才能规避 subshell 的进程隔离问题呢？两个方案：Command Substitution 和 Process Substitution。</p>
+
+<p>使用 Command Substitution 的话需要注意的地方是 <code class="highlighter-rouge">\0</code> 经过部分引用后就被吃掉了，也就说如下的 shell 脚本是不 work 的：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># WARNING: not working</span>
+<span class="k">while </span><span class="nv">IFS</span><span class="o">=</span> <span class="nb">read</span> <span class="nt">-r</span> <span class="nt">-d</span> <span class="s1">''</span> filename<span class="p">;</span> <span class="k">do </span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span> <span class="o">&lt;&lt;&lt;</span><span class="s2">"</span><span class="k">$(</span>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-print0</span><span class="k">)</span><span class="s2">"</span>
+</code></pre></div></div>
+
+<p>所以如果想使用 Command Substitution + Here String 的方法就不能用 <code class="highlighter-rouge">\0</code> 做分隔。但是如果我们可以肯定都是正常的文件的话，那么用 <code class="highlighter-rouge">\n</code> 作为分隔也是不错的选择，因此我们不妨这样：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">while </span><span class="nv">IFS</span><span class="o">=</span> <span class="nb">read</span> <span class="nt">-r</span> <span class="nt">-d</span> <span class="s1">$'</span><span class="se">\n</span><span class="s1">'</span> filename<span class="p">;</span> <span class="k">do </span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span> <span class="o">&lt;&lt;&lt;</span><span class="s2">"</span><span class="k">$(</span>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span><span class="k">)</span><span class="s2">"</span>
+</code></pre></div></div>
+
+<p>仅仅是简单把 <code class="highlighter-rouge">-d</code> 的参数从 <code class="highlighter-rouge">''</code> 改为 <code class="highlighter-rouge">$'\n'</code>，b.t.w. <code class="highlighter-rouge">''</code> 也只是 <code class="highlighter-rouge">$'\0'</code> 的简写；然后让 <code class="highlighter-rouge">find</code> 命令自然输出，which 分隔符就是 <code class="highlighter-rouge">\n</code>。</p>
+
+<p>另外一种做法是 Process Substitution：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">while </span><span class="nv">IFS</span><span class="o">=</span> <span class="nb">read</span> <span class="nt">-r</span> <span class="nt">-d</span> <span class="s1">''</span> filename<span class="p">;</span> <span class="k">do </span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span> &lt; &lt;<span class="o">(</span>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-print0</span><span class="o">)</span>
+</code></pre></div></div>
+
+<p><code class="highlighter-rouge">&lt;(cmd)</code> Process Substitution 是非常有用的，它与 <code class="highlighter-rouge">"$(cmd)"</code> Command Substitution 的区别是很微妙的，前者是把整个命令的输出作为一个输入，后者是把整个命令的输出打印出来，听上去有点 <code class="highlighter-rouge">$*</code> 之于 <code class="highlighter-rouge">#$@</code> 的感觉。要注意其中的空格不能多也不能少！</p>
+
+<p>在某些情况下接受标准输入是会出现问题的，因为 while 循环主体与 read 可以读取同一个文件描述符 0，所以一旦 while 循环主体也要读取 stdin 那就坏事了：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">while </span><span class="nv">IFS</span><span class="o">=</span> <span class="nb">read</span> <span class="nt">-r</span> <span class="nt">-d</span> <span class="s1">''</span> filename<span class="p">;</span> <span class="k">do </span><span class="nb">read</span> <span class="nt">-r</span> <span class="nt">-d</span> <span class="s1">''</span> line &lt;&amp;0<span class="p">;</span> <span class="nb">echo</span> <span class="s2">"-&gt;</span><span class="nv">$line</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span> &lt; &lt;<span class="o">(</span>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-print0</span><span class="o">)</span>
+</code></pre></div></div>
+
+<p>如果亲自运行一下再与之前的对比一下就会发现输出的东西少了整整一半，这是隐患，真正出问题的代码不会这么明显地写着从 0 读取。</p>
+
+<p>正确的做法应该从另外的文件描述符进行输入，由于使用了 Process Substitution 这是很容易办到的：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">while </span><span class="nv">IFS</span><span class="o">=</span> <span class="nb">read</span> <span class="nt">-u3</span> <span class="nt">-r</span> <span class="nt">-d</span> <span class="s1">''</span> filename<span class="p">;</span> <span class="k">do </span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span><span class="p">;</span> <span class="k">done </span>3&lt; &lt;<span class="o">(</span>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-print0</span><span class="o">)</span>
+</code></pre></div></div>
+
+<p>唯一的修改就是让 <code class="highlighter-rouge">read -u3</code> 从 3 读取，然后让 <code class="highlighter-rouge">find</code> 的输出导入 3。</p>
+
+<p>如此这般，我们现在应该完全可以进行任何的命令了：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">py_cnt</span><span class="o">=</span>0
+<span class="k">while </span><span class="nv">IFS</span><span class="o">=</span> <span class="nb">read</span> <span class="nt">-u3</span> <span class="nt">-r</span> <span class="nt">-d</span> <span class="s1">''</span> _<span class="p">;</span> <span class="k">do</span> <span class="o">((</span>py_cnt++<span class="o">))</span><span class="p">;</span> <span class="k">done </span>3&lt; &lt;<span class="o">(</span>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-print0</span><span class="o">)</span>
+<span class="nb">echo</span> <span class="nv">$py_cnt</span>
+</code></pre></div></div>
+
+<h4 id="24-for">2.4 <code class="highlighter-rouge">for</code></h4>
+
+<p>我们应该已经有了一个完全可靠的变量文件的脚本了，但是我还是想回过头看一下 for 循环。</p>
+
+<p>使用 for 循环天然就规避了很多问题：</p>
+
+<ol>
+  <li>没有使用管道，因此没有 subshell，也不会占用标准输入。</li>
+  <li><code class="highlighter-rouge">*</code> 展开自动转义，不需要人工处理 <code class="highlighter-rouge">\0</code> 之类的东西，省心。</li>
+</ol>
+
+<p>因此如果我们确认一定以及肯定我们遍历的目录深度就是 2，那么请大胆使用 for。我曾经给我的专辑批量加上 mid3v2 标签的时候写过这样的脚本：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for </span>dir <span class="k">in</span> <span class="o">[</span>1-9]<span class="k">*</span><span class="p">;</span> <span class="k">do 
+    </span><span class="nv">folder</span><span class="o">=</span><span class="s2">"</span><span class="nv">$dir</span><span class="s2">/Folder.jpg"</span><span class="p">;</span> 
+    <span class="o">[</span> <span class="o">!</span> <span class="nt">-e</span> <span class="s2">"</span><span class="nv">$folder</span><span class="s2">"</span> <span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="k">continue</span><span class="p">;</span> 
+    <span class="k">for </span>mp3 <span class="k">in</span> <span class="s2">"</span><span class="nv">$dir</span><span class="s2">"</span>/<span class="k">*</span>.mp3<span class="p">;</span> <span class="k">do 
+        </span>mid3v2 <span class="nt">-p</span> <span class="s2">"</span><span class="nv">$folder</span><span class="s2">"</span> <span class="s2">"</span><span class="nv">$mp3</span><span class="s2">"</span><span class="p">;</span> 
+    <span class="k">done</span><span class="p">;</span> 
+<span class="k">done</span>
+</code></pre></div></div>
+
+<p>同时我想敬告试图使用 for 去迭代 find 输出的朋友，通过修改 IFS 是可以做到的：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash <span class="o">&lt;&lt;</span><span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+IFS=</span><span class="nv">$'</span><span class="sh">\n'
+for filename in </span><span class="k">$(</span>find <span class="nt">-name</span> <span class="s1">'*.py'</span><span class="k">)</span><span class="sh">; do echo "-&gt;</span><span class="nv">$filename</span><span class="sh">"; done
+</span><span class="no">EOF
+</span></code></pre></div></div>
+
+<p>但是非常容易出错！第一是建议在 subshell 中运行，避免修改了 IFS 还要切换回来；第二是只能让 IFS 值为 <code class="highlighter-rouge">\n</code> 而不能为 <code class="highlighter-rouge">\0</code>，否则在展开 Command Substitution 的时候 <code class="highlighter-rouge">\0</code> 会被吃掉，然后会变成一坨打印出来；第三是 Command Substitution 一定不能被引用，部分引用也不行 (<code class="highlighter-rouge">"$(find)"</code>)，否则 Shell 会把整个输出作为一个不可分割的整体塞给 for 去迭代。</p>
+
+<hr />
+<h3 id="3-批处理文本">3. 批处理文本</h3>
+
+<p>下面来谈谈批处理文本文件的问题，这个需求在实际工作中偶尔会遇到，遇到的时候还挺恶心的。</p>
+
+<h4 id="31-vim">3.1 <code class="highlighter-rouge">vim</code></h4>
+
+<p>应该毫不质疑 vim 在这种场景下能够发挥出来的作用。大家对 vim 的认识不应该只停留在一个高效的交互式的文本编辑器上，有时候它也可以不交互。不要忘了它的祖先可是 ex 和 ed。</p>
+
+<p>最常见的问题是批量替换，比方说，我们要批量替换一大大大堆文件里的端口号，40000 -&gt; 40001，比方说，比方说啊。</p>
+
+<p>那么使用 vim 来做的话会很容易：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>vim +<span class="s1">'%s/\v&lt;40000&gt;/40001/g'</span> +x &lt;file&gt;
+</code></pre></div></div>
+
+<p>给部分 IDE 玩家简单解释一下其中可能陌生的元素：<code class="highlighter-rouge">\v</code> 表示使用 <code class="highlighter-rouge">very magic</code> 模式，<code class="highlighter-rouge">&lt;</code> 与 <code class="highlighter-rouge">&gt;</code> 在 <code class="highlighter-rouge">very magic</code> 模式下匹配单词的开始与结束（类似 pcre 里的 <code class="highlighter-rouge">\b</code>），然后用 <code class="highlighter-rouge">vim +{command}</code> 来执行 ex 命令。</p>
+
+<p>如果我有多个端口要替换呢，比方说 40000 -&gt; 40001, 30000 -&gt; 30001, 20000 -&gt; 20001：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> <span class="o">&lt;&lt;</span><span class="sh">'</span><span class="no">EOF</span><span class="sh">' &gt;subport.ex
+%s/\v&lt;40000&gt;/40001/g
+%s/\v&lt;30000&gt;/30001/g
+%s/\v&lt;20000&gt;/20001/g
+x
+</span><span class="no">EOF
+</span>vim <span class="nt">-S</span> subport.ex &lt;file&gt;
+</code></pre></div></div>
+
+<p>很好理解，就是把 ex 命令都写到一个文件里，然后用 <code class="highlighter-rouge">vim -S</code> 来执行。</p>
+
+<p>所以要批处理的话就超级简单啦，之前已经做了足够的讨论，因为没有副作用，直接用 <code class="highlighter-rouge">find -exec</code>：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find <span class="nb">.</span> <span class="nt">-type</span> f <span class="nt">-exec</span> vim <span class="nt">-S</span> subport.ex <span class="o">{}</span> <span class="se">\;</span>
+</code></pre></div></div>
+
+<p>但是这样会把每个文件都替换一遍，就算什么都没有也替换一遍，太暴力了，不妨 grep 一下先：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">grep</span> <span class="nt">-r</span> <span class="nb">.</span> <span class="nt">-P</span> <span class="s1">'\b[234]0000\b'</span> <span class="nt">-lZ</span> | xargs <span class="nt">-0</span> <span class="nt">-I</span><span class="o">{}</span> vim <span class="nt">-S</span> subport.ex <span class="o">{}</span>
+</code></pre></div></div>
+
+<p>grep 的 <code class="highlighter-rouge">-P</code> 使用 pcre，<code class="highlighter-rouge">-l</code> 只输出匹配到的文件名，<code class="highlighter-rouge">-Z</code> 以 <code class="highlighter-rouge">\0</code> 作为文件分隔符。奥对了，只有 gnu/grep 才有 <code class="highlighter-rouge">-P</code>，macOS 用户请 <code class="highlighter-rouge">brew install grep --with-default-names</code> 吧~</p>
+
+<p>然而仅仅是替换并不能真正体现出 vim ex 的能力啊，必须要提醒一下 <code class="highlighter-rouge">grep</code> 名称的来源 <code class="highlighter-rouge">g/re/p</code> 就是 vim 前身 ex 的命令，global 命令才是 ex 的精华。</p>
+
+<hr />
+
+<p>TO BE CONTINUED</p>
+
+<p>vim -S: global / Substitution / range
+sed 
+awk</p>
+
+  </div>
+
+  
+</article>
+
+      </div>
+    </main>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">小生境</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li>
+            
+              jschwinger23
+            
+            </li>
+            
+            <li><a href="mailto:greyschwinger@gmail.com">greyschwinger@gmail.com</a></li>
+            
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/jschwinger23"><span class="icon icon--github"><svg viewBox="0 0 16 16" width="16px" height="16px"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">jschwinger23</span></a>
+
+          </li>
+          
+
+          
+        </ul>
+      </div>
+
+      <div class="footer-col footer-col-3">
+        <p>Live to tell
+</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
