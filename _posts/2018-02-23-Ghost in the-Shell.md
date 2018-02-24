@@ -264,7 +264,7 @@ while IFS= read -r -d '' filename; do echo "$filename"; done < <(find . -name '*
 while IFS= read -r -d '' filename; do read -r -d '' line <&0; echo "->$line"; done < <(find . -name '*.py' -print0)
 ```
 
-如果亲自运行一下再与之前的对比一下就会发现输出的东西少了整整一半，这是隐患，真正出问题的代码不会这么明显地写着从 0 读取。
+如果亲自运行一下再与之前的对比一下就会发现输出的东西少了整整一半，这是隐患，真正出问题的代码不会这么明显地写着从 0 读取。曾经遇到的问题是 `ffmpeg` 居然会调用一个子命令，它们之间居然用 stdin / stdout 来通信，如果你已经用管道占用了 stdin 的话连报错都看不懂。
  
 正确的做法应该从另外的文件描述符进行输入，由于使用了 Process Substitution 这是很容易办到的：
 
@@ -281,6 +281,14 @@ py_cnt=0
 while IFS= read -u3 -r -d '' _; do ((py_cnt++)); done 3< <(find . -name '*.py' -print0)
 echo $py_cnt
 ```
+
+再弱弱提一句，read 的 fields split 能力也是超级好用的，比如说要取出 `ls -l` 输出中的 group 与 user，那么可以：
+
+```shell
+ls -l | (while read _ _ user group _; do echo "$user -> $group"; done)
+```
+
+如果有需要也可是直接修改 `IFS`，轻松切列。
 
 #### 2.4 `for`
 
@@ -436,7 +444,7 @@ awk 是一门编程语言，毫无疑问。只不过是古代语言。
 
 然而只有神经病才会天天没事用 `getline` 读取管道再调用 `substr` 之类的函数来做一些奇怪的事情。
 
-让我们着眼于它的优势之处：filter与 field split。
+让我们着眼于它的优势之处：filter 与 fields split。
 
 比如说众所周知 `docker images --filter` 基本就是废的，那我们想删除名字中包含 `einplus` 的镜像应该怎么做？~~（请 `grep | cut` 党去死，谢谢）~~
 
@@ -445,6 +453,14 @@ docker rmi -f $(docker images | awk '$1 ~ /einplus/ { print $3 }')
 ```
 
 用 awk 的话就会非常流畅，`$1` 与 `$3` 非常精确地取出镜像名字与 ID，然后匹配名字、输出 ID。
+
+当然提到切列的时候永远不要忘了 read：
+
+```shell
+docker rmi -f $(docker images | while read name _ id _; do [[ "$name" =~ .*einplus.* ]] && echo "$id"; done)
+```
+
+也是非常痛快的！
 
 比如我就曾经写过一个命令，批处理我的 mp3 文件，让它们的 TIT2 信息作为文件名，代码是这样的：
 

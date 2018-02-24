@@ -308,7 +308,7 @@ find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*
 <div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">while </span><span class="nv">IFS</span><span class="o">=</span> <span class="nb">read</span> <span class="nt">-r</span> <span class="nt">-d</span> <span class="s1">''</span> filename<span class="p">;</span> <span class="k">do </span><span class="nb">read</span> <span class="nt">-r</span> <span class="nt">-d</span> <span class="s1">''</span> line &lt;&amp;0<span class="p">;</span> <span class="nb">echo</span> <span class="s2">"-&gt;</span><span class="nv">$line</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span> &lt; &lt;<span class="o">(</span>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-print0</span><span class="o">)</span>
 </code></pre></div></div>
 
-<p>如果亲自运行一下再与之前的对比一下就会发现输出的东西少了整整一半，这是隐患，真正出问题的代码不会这么明显地写着从 0 读取。</p>
+<p>如果亲自运行一下再与之前的对比一下就会发现输出的东西少了整整一半，这是隐患，真正出问题的代码不会这么明显地写着从 0 读取。曾经遇到的问题是 <code class="highlighter-rouge">ffmpeg</code> 居然会调用一个子命令，它们之间居然用 stdin / stdout 来通信，如果你已经用管道占用了 stdin 的话连报错都看不懂。</p>
 
 <p>正确的做法应该从另外的文件描述符进行输入，由于使用了 Process Substitution 这是很容易办到的：</p>
 
@@ -323,6 +323,13 @@ find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*
 <span class="k">while </span><span class="nv">IFS</span><span class="o">=</span> <span class="nb">read</span> <span class="nt">-u3</span> <span class="nt">-r</span> <span class="nt">-d</span> <span class="s1">''</span> _<span class="p">;</span> <span class="k">do</span> <span class="o">((</span>py_cnt++<span class="o">))</span><span class="p">;</span> <span class="k">done </span>3&lt; &lt;<span class="o">(</span>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.py'</span> <span class="nt">-print0</span><span class="o">)</span>
 <span class="nb">echo</span> <span class="nv">$py_cnt</span>
 </code></pre></div></div>
+
+<p>再弱弱提一句，read 的 fields split 能力也是超级好用的，比如说要取出 <code class="highlighter-rouge">ls -l</code> 输出中的 group 与 user，那么可以：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls</span> <span class="nt">-l</span> | <span class="o">(</span><span class="k">while </span><span class="nb">read </span>_ _ user group _<span class="p">;</span> <span class="k">do </span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$user</span><span class="s2"> -&gt; </span><span class="nv">$group</span><span class="s2">"</span><span class="p">;</span> <span class="k">done</span><span class="o">)</span>
+</code></pre></div></div>
+
+<p>如果有需要也可是直接修改 <code class="highlighter-rouge">IFS</code>，轻松切列。</p>
 
 <h4 id="24-for">2.4 <code class="highlighter-rouge">for</code></h4>
 
@@ -468,7 +475,7 @@ x
 
 <p>然而只有神经病才会天天没事用 <code class="highlighter-rouge">getline</code> 读取管道再调用 <code class="highlighter-rouge">substr</code> 之类的函数来做一些奇怪的事情。</p>
 
-<p>让我们着眼于它的优势之处：filter与 field split。</p>
+<p>让我们着眼于它的优势之处：filter 与 fields split。</p>
 
 <p>比如说众所周知 <code class="highlighter-rouge">docker images --filter</code> 基本就是废的，那我们想删除名字中包含 <code class="highlighter-rouge">einplus</code> 的镜像应该怎么做？<del>（请 <code class="highlighter-rouge">grep | cut</code> 党去死，谢谢）</del></p>
 
@@ -476,6 +483,13 @@ x
 </code></pre></div></div>
 
 <p>用 awk 的话就会非常流畅，<code class="highlighter-rouge">$1</code> 与 <code class="highlighter-rouge">$3</code> 非常精确地取出镜像名字与 ID，然后匹配名字、输出 ID。</p>
+
+<p>当然提到切列的时候永远不要忘了 read：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker rmi <span class="nt">-f</span> <span class="k">$(</span>docker images | <span class="k">while </span><span class="nb">read </span>name _ id _<span class="p">;</span> <span class="k">do</span> <span class="o">[[</span> <span class="s2">"</span><span class="nv">$name</span><span class="s2">"</span> <span class="o">=</span>~ .<span class="k">*</span>einplus.<span class="k">*</span> <span class="o">]]</span> <span class="o">&amp;&amp;</span> <span class="nb">echo</span> <span class="s2">"</span><span class="nv">$id</span><span class="s2">"</span><span class="p">;</span> <span class="k">done)</span>
+</code></pre></div></div>
+
+<p>也是非常痛快的！</p>
 
 <p>比如我就曾经写过一个命令，批处理我的 mp3 文件，让它们的 TIT2 信息作为文件名，代码是这样的：</p>
 
