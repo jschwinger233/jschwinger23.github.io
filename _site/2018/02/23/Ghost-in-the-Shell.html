@@ -491,7 +491,7 @@ x
 
 <p>也是非常痛快的！</p>
 
-<p>比如我就曾经写过一个命令，批处理我的 mp3 文件，让它们的 TIT2 信息作为文件名，代码是这样的：</p>
+<p>再比如我就曾经写过一个命令，批处理我的 mp3 文件，让它们的 TIT2 信息作为文件名，代码是这样的：</p>
 
 <div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find <span class="nb">.</span> <span class="nt">-name</span> <span class="s1">'*.mp3'</span> <span class="nt">-print0</span> | <span class="k">while </span><span class="nb">read</span> <span class="nt">-d</span> <span class="s1">''</span> <span class="nt">-r</span> filename<span class="p">;</span> <span class="k">do </span>mid3v2 <span class="nt">-l</span> <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span> | mv <span class="s2">"</span><span class="nv">$filename</span><span class="s2">"</span> <span class="s2">"</span><span class="k">${</span><span class="nv">filename</span><span class="p">%/*</span><span class="k">}</span><span class="s2">/</span><span class="k">$(</span>awk <span class="nt">-F</span><span class="o">=</span> <span class="s1">'$1 ~ /TIT2/ { print $2 }'</span><span class="k">)</span><span class="s2">.mp3"</span><span class="p">;</span> <span class="k">done</span>
 </code></pre></div></div>

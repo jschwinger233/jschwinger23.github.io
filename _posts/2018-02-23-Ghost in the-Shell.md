@@ -462,7 +462,7 @@ docker rmi -f $(docker images | while read name _ id _; do [[ "$name" =~ .*einpl
 
 也是非常痛快的！
 
-比如我就曾经写过一个命令，批处理我的 mp3 文件，让它们的 TIT2 信息作为文件名，代码是这样的：
+再比如我就曾经写过一个命令，批处理我的 mp3 文件，让它们的 TIT2 信息作为文件名，代码是这样的：
 
 ```shell
 find . -name '*.mp3' -print0 | while read -d '' -r filename; do mid3v2 -l "$filename" | mv "$filename" "${filename%/*}/$(awk -F= '$1 ~ /TIT2/ { print $2 }').mp3"; done
