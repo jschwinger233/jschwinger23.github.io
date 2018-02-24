@@ -21,25 +21,30 @@ Shell 编程 (以下默认为 Bourne Again Shell) 是有趣的，就连 Larry Wa
 find . -name '*.py'
 ```
 
-然而不要忘了另外几个同样有用的选项 `-path` 与 `-regex`，以及它们的 case-ignore 版本 `-iname` / `-ipath` / `-iregex`：
+然而不要忘了另外几个同样有用的选项 `-path` 与 `-regex`，以及它们的 case-ignore 版本 `-iname` / `-ipath` / `-iregex`，比如搜索在 tests 目录下的 py 文件：
 
 ```shell
-# 在 tests 目录下的 py 文件
 find . -path '*/tests/*.py'
+```
 
-# 查找所有的名字叫做 folder 的 jpg，不区分大小写
+查找所有的名字叫做 folder 的 jpg，不区分大小写：
+
+```shell
 find . -iname folder.jpg
 ```
 
-使用 `-regex` 时建议通过 `-regextype` 选择正则引擎，默认的 `findutils-default` 引擎简直可以去死了：
+使用 `-regex` 时建议通过 `-regextype` 选择正则引擎，默认的 `findutils-default` 引擎简直可以去死了。比如查找所有的在 `**/test/` 或者 `**/test/` 之下的 py 文件或者 pyc 文件：
 
 ```shell
-# 查找所有的在 `**/test/` 或者 `**/test/` 之下的 py 文件或者 pyc 文件
 find . -regex '.*/tests?/.*\.pyc?'  -regextype posix-extended
+```
 
-# 查找所有的名字叫做 folder 的 jpg 或者 png，不区分大小写
+查找所有的名字叫做 folder 的 jpg 或者 png，不区分大小写：
+```shell
 find . -iregex '.*folder.\(jpg\|png\)' -regextype posix-extended
 ```
+
+特殊字符的转义是相当恶心的，有时候你真的拿捏不准那些字符在哪些模式下是需要转义才能表达特殊含义，比如如上的 `(` / `)` / `|`。
 
 熟练使用 `-regex` 可以让你少背很多文档，比如由于 `find` 没有 `-exclude`，所以排除目录的话你要么用 `-prune` 要么用 `-regex` 自己撸：
 
@@ -65,7 +70,13 @@ find . -regex './[^/]*/[^/]*'
 
 严格来说，上面 regex 党的代码并不等价 prune 党，regex 严格搜索二级子目录，而 maxdepth 搜索了一级目录与二级，此处 regex 做的事情等价于 `find . -mindepth 2 -maxdepth 2`；并且如果有文件名中包含了 `/` 字符也会导致 regex 出事。
 
-建议年轻人通读一遍 `FIND(1)` 的 manual，会有心得。
+由于 ERE 正则之渣，强烈不建议在过于复杂的需求中使用 `-regex` 吃屎，实在不想写 Python，请老老实实 `find | grep -P` 用 pcre 拯救生命，比如上面的排除 .git 目录就可以写成如下：
+
+```shell
+find | grep -P '^(?!.*\.git).*'
+```
+
+（你可能需要拜读一番旷世杰作《Mastering Regular Expressions》才能理解上面的正则）
 
 #### 1.2 `for`
 
@@ -353,10 +364,96 @@ grep 的 `-P` 使用 pcre，`-l` 只输出匹配到的文件名，`-Z` 以 `\0` 
 
 然而仅仅是替换并不能真正体现出 vim ex 的能力啊，必须要提醒一下 `grep` 名称的来源 `g/re/p` 就是 vim 前身 ex 的命令，global 命令才是 ex 的精华。
 
+我们来看这么一个 real world 的需求（感谢 BuBu），现在有一堆文件，要把如下的 `to_delete` logger 删除：
+
+```python
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'loggers': {
+        'to_delete': {
+            'handlers': ['stdout'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'crumb': {
+            'handlers': ['stdout'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
+```
+
+用 global 来做的话是很容易的，只要理解了 `g/re/p` 的模式及其变体 `g/re/[range]p` 就很容易解决：
+
+```shell
+grep to_delete -r . -lZ | xargs -0 -I{} vim +'g/\v<LOGGING>/ /to_delete/,/}/d' +xa {}
+```
+
+重点是管道之后用 vim 运行的 ex 命令，用 `g/re/[range]p` 的模式来拆分的话，`/re/` 是 `/\v<LOGGING>/`，搜索出 LOGGING 单词；`[range]` 是 `/to_delete/,/}/`，从 `to_delete` 到 `}` 直接的行；`p` 是 `d`，即 ex 命令中的删除。
+所以整个 ex 命令的意思是：找到每个 `LOGGING` 单词，然后从它之后的代码中把 `to_delete` 至 `}` 直接的行都删除。
+
+或者直接使用 range 命令来操作也是可行的（我就直接撸 ex 好啦，自行脑补上 `grep`）：
+
+```shell
+vim +'/to_delete/;/}/d' +xa <file>
+```
+
+也很好理解啦，就是搜索出 `to_delete` 到 `}` 之间的行再直接 `d`。请注意细节是 `;` 表明 range 的右边界是从左边界开始搜索的，如果使用 `,` 的话右边界就是与左边界搜索起点相同进行搜索，多半会造成错误的删除。
+
+就是这样。
+
+#### 3.2 `sed`
+
+sed 一度让我沉迷，以致于我居然写出来过 `sed -En ':next; N; $p; '$k',$D; $!b next'` 和 `sed -En '/\{/,/}/{/\{/h; /\{/!H; x; s/(.+)\n(.+)/\2\n\1/; h; /}/p;};'` 这样的代码，真是太可怕了，我现在完全看不懂。
+
+这篇文章的目的将始终致力于让人们在生活中利用 shell 工具提高生产力，沉迷炫技是不对的，虽然我经常这么干。
+
+sed 最常用的用途就是批量替换啦，虽然在已经有 vim 的解决方案下我完全不知道使用 sed 还有什么意义，但是要知道 vim 并不是哪里都有的，比如 Docker 容器内，所以我们还是要掌握一定的 sed 技能。虽然连 vim 都没有的环境多半也没有 sed。
+
+那么还是老问题，把 40000 端口替换为 40001：
+
+```shell
+sed -i.bak 's/40000/40001/g' <file>
+```
+
+`-i.bak` 表明把被替换的文件做一个备份而不是原地替换，在没有版本控制的环境下这是能救命的。
+
+有意思的地方是 sed 天然能够接受多文件作为输入参数，所以我们（在能够确保没有异形文件名的情况下）可以大胆一点：
+
+```shell
+sed -i.bak 's/40000/40001/g' $(grep -P '\b40000\b' -r . -l)
+```
+
+这样做的好处是减少了 sed 调用次数与 fork 出来的进程数，同时利用 `grep -P` 我们可以大胆用 pcre 筛选出要替换的文件，而不用拘泥于蹩脚的 ERE，是的，`sed -E` 也是渣。
+
+至于其他的魔幻使用方式，比如 hold 空间什么的，我就这么说吧，正常人根本不会有什么需求会要你用 sed 输出文本文件的倒数 k 行之类的操作（好的我知道 `tail -k`），如果真的发现开始变得恶心起来，请果断用 Python 大法。所以对 sed 的掌握请浅尝辄止。
+
+#### 3.3 `awk`
+
+awk 是一门编程语言，毫无疑问。只不过是古代语言。
+
+然而只有神经病才会天天没事用 `getline` 读取管道再调用 `substr` 之类的函数来做一些奇怪的事情。
+
+让我们着眼于它的优势之处：filter与 field split。
+
+比如说众所周知 `docker images --filter` 基本就是废的，那我们想删除名字中包含 `einplus` 的镜像应该怎么做？~~（请 `grep | cut` 党去死，谢谢）~~
+
+```shell
+docker rmi -f $(docker images | awk '$1 ~ /einplus/ { print $3 }')
+```
+
+用 awk 的话就会非常流畅，`$1` 与 `$3` 非常精确地取出镜像名字与 ID，然后匹配名字、输出 ID。
+
+比如我就曾经写过一个命令，批处理我的 mp3 文件，让它们的 TIT2 信息作为文件名，代码是这样的：
+
+```shell
+find . -name '*.mp3' -print0 | while read -d '' -r filename; do mid3v2 -l "$filename" | mv "$filename" "${filename%/*}/$(awk -F= '$1 ~ /TIT2/ { print $2 }').mp3"; done
+```
+
+可以说是很酣畅淋漓了。
+
 ---
 
-TO BE CONTINUED
-
-vim -S: global / Substitution / range
-sed 
-awk
+说了这么多，其实想熟练使用 Shell 提高生产力，最重要的还是练习啦。相比其他前十语言来说，Shell 的动态弱类型实在是太古灵精怪了，多加一个引号就完全不一样，各种潜规则也层出不穷，多踩chi坑shi，相信明天会更好 \^o^/
