@@ -498,6 +498,34 @@ x
 
 <p>可以说是很酣畅淋漓了。</p>
 
+<p>另外不得不提的是，awk 对文本块的处理几乎是一切 shell tools 里最轻巧的，相比 perl 记不完的变量、python 上来就写脚本（线上容器 vi 写脚本了解一下），awk 在某些不那么复杂的需求下简直犀利。</p>
+
+<p>比如我的需求是提取出一个 yaml 文件中所有类型是 <code class="highlighter-rouge">cronjob</code> 的并且每天运行的任务的 <code class="highlighter-rouge">cmd</code>，yaml 文件长这样：</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">job1</span><span class="pi">:</span>
+    <span class="na">kind</span><span class="pi">:</span> <span class="s">cronjob</span>
+    <span class="na">cmd</span><span class="pi">:</span> <span class="s">job1</span>
+    <span class="na">schedule</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0</span><span class="nv"> </span><span class="s">18</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*"</span>
+
+<span class="na">job2</span><span class="pi">:</span>
+    <span class="na">kind</span><span class="pi">:</span> <span class="s">cronjob</span>
+    <span class="na">cmd</span><span class="pi">:</span> <span class="s">job2</span>
+    <span class="na">schedule</span><span class="pi">:</span> <span class="s2">"</span><span class="s">50</span><span class="nv"> </span><span class="s">18</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*"</span>
+
+<span class="na">job3</span><span class="pi">:</span>
+    <span class="na">kind</span><span class="pi">:</span> <span class="s">daemon</span>
+    <span class="na">cmd</span><span class="pi">:</span> <span class="s">./manage.py corpus_patch_es</span>
+</code></pre></div></div>
+
+<p>那么我的 awk 可以这样写：</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>awk <span class="nt">-F</span><span class="s1">$'</span><span class="se">\n</span><span class="s1">'</span> <span class="nt">-v</span> <span class="nv">RS</span><span class="o">=</span> <span class="s1">'$0 ~ /cronjob/ &amp;&amp; /\* \* \*/ {print $0}'</span> offline.yaml | <span class="nb">grep</span> <span class="nt">-P</span> <span class="s1">'(?&lt;=cmd: ).+'</span> <span class="nt">-o</span>
+</code></pre></div></div>
+
+<p>其中需要特别强调是 <code class="highlighter-rouge">-F$'\n'</code> 让 awk 以换行作为列分隔，这样每个 <code class="highlighter-rouge">$0</code> 就是一整个文本块，然后剩下的就很容易了。</p>
+
+<p>简直爽！</p>
+
 <hr />
 
 <p>说了这么多，其实想熟练使用 Shell 提高生产力，最重要的还是练习啦。相比其他前十语言来说，Shell 的动态弱类型实在是太古灵精怪了，多加一个引号就完全不一样，各种潜规则也层出不穷，多踩chi坑shi，相信明天会更好 \^o^/</p>

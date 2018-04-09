@@ -470,6 +470,36 @@ find . -name '*.mp3' -print0 | while read -d '' -r filename; do mid3v2 -l "$file
 
 可以说是很酣畅淋漓了。
 
+另外不得不提的是，awk 对文本块的处理几乎是一切 shell tools 里最轻巧的，相比 perl 记不完的变量、python 上来就写脚本（线上容器 vi 写脚本了解一下），awk 在某些不那么复杂的需求下简直犀利。
+
+比如我的需求是提取出一个 yaml 文件中所有类型是 `cronjob` 的并且每天运行的任务的 `cmd`，yaml 文件长这样：
+
+```yaml
+job1:
+    kind: cronjob
+    cmd: job1
+    schedule: "0 18 * * *"
+
+job2:
+    kind: cronjob
+    cmd: job2
+    schedule: "50 18 * * *"
+
+job3:
+    kind: daemon
+    cmd: ./manage.py corpus_patch_es
+```
+
+那么我的 awk 可以这样写：
+
+```shell
+awk -F$'\n' -v RS= '$0 ~ /cronjob/ && /\* \* \*/ {print $0}' offline.yaml | grep -P '(?<=cmd: ).+' -o
+```
+
+其中需要特别强调是 `-F$'\n'` 让 awk 以换行作为列分隔，这样每个 `$0` 就是一整个文本块，然后剩下的就很容易了。
+
+简直爽！
+
 ---
 
 说了这么多，其实想熟练使用 Shell 提高生产力，最重要的还是练习啦。相比其他前十语言来说，Shell 的动态弱类型实在是太古灵精怪了，多加一个引号就完全不一样，各种潜规则也层出不穷，多踩chi坑shi，相信明天会更好 \^o^/
