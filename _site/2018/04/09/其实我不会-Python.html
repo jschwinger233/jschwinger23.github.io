@@ -642,7 +642,7 @@
 
 <p>发现 <code class="highlighter-rouge">A.a = 1</code> 直接设置到 <code class="highlighter-rouge">A.__dict__['a']</code> 里去了，简直出乎意料，说好的数据描述符呢？</p>
 
-<h4 id="52-property-protocol">5.2 Property Protocol</h4>
+<h4 id="52-descriptor-protocol">5.2 Descriptor Protocol</h4>
 
 <p>重新看一下 <code class="highlighter-rouge">3.1</code> 的 <code class="highlighter-rouge">classproperty</code> 代码，发现，我擦，为什么这也行？</p>
 
