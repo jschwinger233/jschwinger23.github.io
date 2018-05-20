@@ -68,6 +68,9 @@ rock_training_job.run()
 好的，这么一个幼齿的实现已经是 `Template Method` (GoF P306) 了。
 `Template Method` 的目的是 `Define the skeleton of an algorithm in an operation, deferring somesteps to subclasses`，我们的场景应该是完美切合模式的。
 
+![Template Method](https://raw.githubusercontent.com/jschwinger23/jschwinger23.github.io/master/_posts/Template%20Method.png)
+
+
 ---
 
 Let's think more.
@@ -125,7 +128,7 @@ training_job.run()
 ```
 
 你看 `Factory Method` (GoF P121) 里令人讨厌的 `Creator` 抽象类和具体类就这样出现了。
-[图]
+![Factory Method](https://raw.githubusercontent.com/jschwinger23/jschwinger23.github.io/master/_posts/Factory%20Method.png)
 `TrainingFactory` 就是 `Creator`，`BluesTrainingJob` 和 `RockTrainingJob` 是 `ConcreteCreator`，`get_training_job` 是 `factory method`。
 
 这里的实现展示了 GoF 中的 Implementation Issues 3 中描述的 Smalltalk：`Smalltalk programs often use a method that returns the class of the object to be instantiated`，这里让 Python 照葫芦实现了一下。
@@ -236,7 +239,7 @@ def main(...):
 
 > Define a family of algorithms, encapsulate each one, and make theminterchangeable. Strategy lets the algorithm vary independently fromclients that use it.
 
-[图]
+![Strategy](https://raw.githubusercontent.com/jschwinger23/jschwinger23.github.io/master/_posts/Strategy.png)
 
 不错，依赖注入确实很像 Strategy 模式。Strategy 的目的是为了能够更加动态切换内部一个组件的实现，但是这恰好也实现了依赖注入，让我们可以直接从父类调用子类的实现。
 
@@ -295,6 +298,9 @@ class TrainingJob:
 
 就这样吧- -
 虽然还有很多模式可以说，但是感觉最重要的还是创建型的这几个和控制反转的思想。
+
 表达能力极差，实在做不到娓娓道来庖丁解牛。
+
 说实话就算我有 DI 的思想，我也完全写不出 Martin Fowler 那样深入浅出的文章。
+
 软技能太渣了。。

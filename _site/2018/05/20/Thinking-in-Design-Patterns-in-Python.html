@@ -132,6 +132,8 @@
 <p>好的，这么一个幼齿的实现已经是 <code class="highlighter-rouge">Template Method</code> (GoF P306) 了。
 <code class="highlighter-rouge">Template Method</code> 的目的是 <code class="highlighter-rouge">Define the skeleton of an algorithm in an operation, deferring somesteps to subclasses</code>，我们的场景应该是完美切合模式的。</p>
 
+<p><img src="https://raw.githubusercontent.com/jschwinger23/jschwinger23.github.io/master/_posts/Template%20Method.png" alt="Template Method" /></p>
+
 <hr />
 
 <p>Let’s think more.</p>
@@ -185,7 +187,7 @@
 </code></pre></div></div>
 
 <p>你看 <code class="highlighter-rouge">Factory Method</code> (GoF P121) 里令人讨厌的 <code class="highlighter-rouge">Creator</code> 抽象类和具体类就这样出现了。
-[图]
+<img src="https://raw.githubusercontent.com/jschwinger23/jschwinger23.github.io/master/_posts/Factory%20Method.png" alt="Factory Method" />
 <code class="highlighter-rouge">TrainingFactory</code> 就是 <code class="highlighter-rouge">Creator</code>，<code class="highlighter-rouge">BluesTrainingJob</code> 和 <code class="highlighter-rouge">RockTrainingJob</code> 是 <code class="highlighter-rouge">ConcreteCreator</code>，<code class="highlighter-rouge">get_training_job</code> 是 <code class="highlighter-rouge">factory method</code>。</p>
 
 <p>这里的实现展示了 GoF 中的 Implementation Issues 3 中描述的 Smalltalk：<code class="highlighter-rouge">Smalltalk programs often use a method that returns the class of the object to be instantiated</code>，这里让 Python 照葫芦实现了一下。</p>
@@ -296,7 +298,7 @@
   <p>Define a family of algorithms, encapsulate each one, and make theminterchangeable. Strategy lets the algorithm vary independently fromclients that use it.</p>
 </blockquote>
 
-<p>[图]</p>
+<p><img src="https://raw.githubusercontent.com/jschwinger23/jschwinger23.github.io/master/_posts/Strategy.png" alt="Strategy" /></p>
 
 <p>不错，依赖注入确实很像 Strategy 模式。Strategy 的目的是为了能够更加动态切换内部一个组件的实现，但是这恰好也实现了依赖注入，让我们可以直接从父类调用子类的实现。</p>
 
@@ -350,10 +352,13 @@
 <hr />
 
 <p>就这样吧- -
-虽然还有很多模式可以说，但是感觉最重要的还是创建型的这几个和控制反转的思想。
-表达能力极差，实在做不到娓娓道来庖丁解牛。
-说实话就算我有 DI 的思想，我也完全写不出 Martin Fowler 那样深入浅出的文章。
-软技能太渣了。。</p>
+虽然还有很多模式可以说，但是感觉最重要的还是创建型的这几个和控制反转的思想。</p>
+
+<p>表达能力极差，实在做不到娓娓道来庖丁解牛。</p>
+
+<p>说实话就算我有 DI 的思想，我也完全写不出 Martin Fowler 那样深入浅出的文章。</p>
+
+<p>软技能太渣了。。</p>
 
   </div>
 
