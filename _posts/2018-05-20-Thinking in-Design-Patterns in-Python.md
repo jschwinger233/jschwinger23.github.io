@@ -104,21 +104,21 @@ def main(klass, input_config, output_config):
 class TrainingFactory(abc.ABC):
 
     def get_training_job(self, *args, **kws):
-        return self.get_training_class(*args, **kws)
+        return self.training_class(*args, **kws)
 
     @property
     @abc.abstractmethod
-    def get_training_class(self):
+    def training_class(self):
         pass
 
 
 class BluesTrainingFactory(TrainingFactory):
-    def get_training_class(self):
+    def training_class(self):
         return BluesTrainingJob
 
 
 class RockTrainingFactory(TrainingFactory):
-    def get_training_class(self):
+    def training_class(self):
         return RockTrainingJob
 
 
