@@ -319,7 +319,7 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_registry</span> <span class="o">=</span> <span class="p">{}</span>
 
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">type_</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">register</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">type_</span><span class="p">):</span>
         <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_registry</span><span class="p">[</span><span class="n">type_</span><span class="p">]</span> <span class="o">=</span> <span class="n">cls</span>
             <span class="k">return</span> <span class="n">cls</span>
@@ -334,7 +334,7 @@
 
 <p>然后在子类仓库中注册子类：</p>
 
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@service_loader</span><span class="p">(</span><span class="s">'trainer'</span><span class="p">)</span>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">@service_loader.register</span><span class="p">(</span><span class="s">'trainer'</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">RockTrainer</span><span class="p">:</span>
     <span class="o">...</span>
 </code></pre></div></div>

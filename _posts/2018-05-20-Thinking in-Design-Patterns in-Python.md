@@ -261,7 +261,7 @@ class ServiceLoader:
     def __init__(self):
         self._registry = {}
 
-    def __call__(self, type_):
+    def register(self, type_):
         def decorator(cls):
             self._registry[type_] = cls
             return cls
@@ -277,7 +277,7 @@ service_loader = ServiceLoader()
 然后在子类仓库中注册子类：
 
 ```python
-@service_loader('trainer')
+@service_loader.register('trainer')
 class RockTrainer:
     ...
 ```
