@@ -208,6 +208,7 @@ AssertionError
 
 <p>所以大体上来说，我们只要别在信号处理器中随意操作全局变量就好了，而不必担心 <code class="highlighter-rouge">这个标准库函数是否调用了非异步信号安全的内核 API</code>。</p>
 
+<hr />
 <h3 id="二process-attaching">二、Process Attaching</h3>
 
 <p>在一家以 ALG 作为核心竞争力的公司进行开发，遇到的最恶心的 BUG 莫过于上线之后算法模型与线下表现不一致。抛开如何在 ALG 开发、工程开发、CI/CD 流程上规避这种不一致先不谈，首先面临的问题是 <code class="highlighter-rouge">如何 DEBUG</code> 与 <code class="highlighter-rouge">如何复现 BUG</code>。每当这时候我都恨不得能够钻进那个正在运行的进程里去看 <code class="highlighter-rouge">这个字典到底有没有被热加载更新</code>、<code class="highlighter-rouge">那个算法模块 API 到底是不是表现正常</code>。</p>
@@ -334,6 +335,7 @@ mkfifo <span class="nv">$pipe</span>
 
 <p>不过再次强调，在高负载下的服务上</p>
 
+<hr />
 <h3 id="三graceful-termination">三、Graceful Termination</h3>
 
 <p>熟悉 Docker 的朋友都知道，当我们试图停止一个容器的时候，(不是 <code class="highlighter-rouge">docker rm -f</code>，你们这些变态)，Docker Daemon 实际上先发送 SIGTERM 给容器内一号进程，等待一段时间后若还没有退出，再发送 SIGKILL 一击必杀。</p>
@@ -603,6 +605,7 @@ f-king GFW
 
 <p>考虑到这种情况下，我们恐怕很难像之前的代码一样解耦 feeder 与 worker，feeder 必然会集成进入 Daemon 框架，然后就变成了 Gunicorn。</p>
 
+<hr />
 <h3 id="四hup">四、HUP</h3>
 
 <p>本来还想讨论一下让 <code class="highlighter-rouge">HUP</code> 信号能够重载(reload)进程的事情，因为这里有个问题是违背了 Docker 单进程容器的规则，我们必然需要让一号进程运行一个进程管理器，它能够处理 <code class="highlighter-rouge">SIGHUB</code> / <code class="highlighter-rouge">SIGINT</code> / …，那么要么我们内存多用 supervisord，要么用轻量级 S6 之类的东西。</p>
