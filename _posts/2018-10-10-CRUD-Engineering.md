@@ -67,8 +67,59 @@ def create_topic_view(request):
 2. 校验工作是组装方法的职责吗? 考虑一个有复杂校验规则的场景, 比如我们定制了一套 DSL 可供上传的语料使用, 那么这里的校验放在组装的 `create_all` 方法里真的大丈夫?
 3. 服务返回数据与模型序列化方法耦合太紧. 考虑一下如果我们提供 `/api/v1/internal/` 和 `/api/v1/external/` 作为 prefix 的 API, 分别包含元信息字段(`updated_at`)和只包含标识符字段(`id`), 那么上面的代码会很难修改.
 
-为什么要在意职责? 这不仅是语意上的问题, 更加关系到开放封闭原则, 影响到未来的扩展.
+ 单一职责原则(SRP)是一个说起来容易做起来难的事情, 但是这里的职责关系到开放封闭原则, which 可视为衡量软件设计好坏的指标.
 
-考虑一下
+ 1.  模型之间的耦合太高了. 当然由于我们这里是外键
+ 2. 应用层与模型层的耦合太高了.
 
-毫无疑问组装工作不应该是 Topic 的工作, 只要你看看其他的 class 有没有组装的
+ 第二个问题 实际上包含了 authen 和 valid 两部分的问题, 先看 valid 的问题
+
+ 第三个问题也是很严肃的: presentation model with double dispatch ( visitor)
+
+authen: visitor
+ Restful API: everything? 
+ difficult query
+
+## 二. Business
+
+by hand
+忘了
+signal
+delete / update 不会删除
+twist signal
+reverse invocation / merge alg / delete one by one / mysql trigger
+service with pubsub
+
+obj: value obj / entity
+layer system: app / service / model / infra (DI)
+
+## 三. remote service
+libs
+anti-corruption
+data mesh
+
+## 四. scaffold
+
+core/settings.py
+    urls.py
+products/views.py
+    urls.py
+    models.py
+    services.py
+    utils.py
+    managements/
+    migrations/
+libs/
+    models.py
+    utils.py
+    storage.py
+deploy/
+    test/
+        settings.py
+    dev/
+        settings.py
+        gunicorn.py
+    prod/
+        ...
+
+reference: DDD / DDD in Action / Django in business
