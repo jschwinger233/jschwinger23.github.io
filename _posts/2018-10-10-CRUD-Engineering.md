@@ -12,6 +12,8 @@ layout: post
 
 > 不符合 PEP8
 
+> 有错别字
+
 ---
 ## 一. 模型与 RESTful
 
@@ -192,7 +194,7 @@ class ApiView(View):
 没错, 就是 GoF 里的那个工厂, 就是有工厂方法的那个抽象工厂.
 使用了工厂的好处是显而易见的,  抛开 GoF 微观视角, 在整个代码的组织上完成了高度的解耦, 但是又非常好扩展.
 
-```
+```python
 class TopicFactory:
     def get_round_cls(self):
         return Round
@@ -231,7 +233,7 @@ class TopicFactory:
 
 假如我们拥有值对象 `TopicInfo` / `RoundInfo` / `QuestionInfo` / ..., 那么代码可能会是这样:
 
-```
+```python
 # views.py
 
 class TopicIndexView(ApiView):
@@ -255,7 +257,7 @@ class TopicIndexView(ApiView):
 
 就是说我们单独定义一个表现层,  用来和领域模型解耦, 它不一定和领域模型的结构一致, 但是它一定表达的是业务逻辑里的数据结构, 也就是用户上传和我们返回的数据结构.
 
-```
+```python
 class ViewTopic:
     @classmethod
     def build(cls, topic: Topic) -> 'ViewTopic':
@@ -328,7 +330,7 @@ API 不是什么资源都能暴露的, 在业务场景下, 它只能暴露聚合
 
 第一件事是说, 比如我们有这样的代码:
 
-```
+```python
 from django.db.models.signals import post_save
 
 class Topic:
@@ -358,7 +360,7 @@ ok, 我们依然有办法去做, 比如实现一套 TCP 延迟发送算法, 等�
 
  第三件事是说, signal 的 `post_save` / `pre_save` 等等所有的 handler, 无论如何查阅文档都找不到一个接口能够同时获取修改前与修改后的模型:
 
-```
+```python
 def post_save_handler(sender, instance, old_instance, ...):
     pass
 
@@ -388,7 +390,7 @@ DDD 对服务层的定义中最关键的几点是:
 
 比方说我们习惯这样的代码:
 
-```
+```python
 def put(request, id_):
     try:
         topic = Topic.objects.create(pk=id_)
@@ -403,7 +405,7 @@ def put(request, id_):
 
  没毛病, 但是如果按照 DDD 的要求, 我们应该在 view 里面表达 user story:
 
-```
+```python
 def put(request, id_):
     topic = update_topic(id_, request.json)
     return ViewTopic(topic).json()
@@ -417,7 +419,7 @@ def put(request, id_):
 
 简单来说, 代码是这样的:
 
-```
+```python
 class TopicService:
     def update(id_, topic_info):
         ...
@@ -446,7 +448,7 @@ class Topic:
 
 简单直白的代码是这样的:
 
-```
+```python
 class Topic:
     def on_create(sender, instance, *args, **kws):
         if Product.objects.get(pk=instance.product_id).type == 'third_party':
@@ -462,7 +464,7 @@ post_save.connect(Topic.on_create, sender=Topic)
 
 如果我们使用了发布领域事件再使用订阅机制去做, 就一点都不僵硬了:
 
-```
+```python
 class Topic
     def on_create(sender, instance, *args, **kws):
         publisher = DomainEventPublisher()
@@ -486,7 +488,7 @@ class TopicService:
 
 比如对于这里的例子来说:
 
-```
+```python
 class LocalProduct:
     id: int
     ...
@@ -510,7 +512,7 @@ class LocalProduct:
 
 第二件事是依赖注入与控制反转, 在 DDD 中提倡连 ORM 都不要暴露, 只能暴露 Repository, 我们来看一下这是什么意思.
 
-```
+```python
 # models.py
 
 class TopicRepository:
@@ -529,7 +531,7 @@ class TopicRepository:
 
 然后假设我们用关系型数据库 +  ORM 作为这个模型的存储, 那么有:
 
-```
+```python
 # infra/orm.py
 
 class TopicRepoORMImplement:
@@ -541,7 +543,7 @@ class TopicRepoORMImplement:
 
 然后假设我们用 ES 同步也用 DSL 建模:
 
-```
+```python
 # infra/es.py
 
 class TopicRepoESImplement:
@@ -551,7 +553,7 @@ class TopicRepoESImplement:
 
 然后假设我们用 MongoDB 作为底层:
 
-```
+```python
 # infra/mongo.py
 
 class TopicRepoMongoImplement:
@@ -562,7 +564,7 @@ class TopicRepoMongoImplement:
 然后我们只要在用之前(比如应用初始化的时候通过配置项实例化对应的实现就可以了:
 
 
-```
+```python
 # apps.py
 
 class DefaultApp:
