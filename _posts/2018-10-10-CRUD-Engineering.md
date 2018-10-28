@@ -590,6 +590,22 @@ class DefaultApp:
 高层模块不应该依赖低层模块，二者都应该依赖其抽象；抽象不应该依赖细节；细节应该依赖抽象。
 ```
 
+ 到此为止, 我们有了一个比较能看的 CRUD 模板:
 
- 
-不想写了, 就这样吧, 工作的代码都没写完..
+```python
+class TopicIndex(ViewApi):
+    @parse_request(transformer=ViewTopic) # convert to value object, return 400 / 422 if not valid
+    def post(self, request):
+        view_topic = request.value_obj # presentation decouple with domain model
+        account_id = request.account_id # middleware handles authentication or return 401
+        view_topic = TopicService().create(view_topic, account_id) # service handles aggregate creation (factory maybe), and return 403 if not authorized
+        return view_topic.json() # ViewApi base class handles JSONResponse and return 200
+```
+
+但是我依然不提倡易上手就写这么重的分层, 而且认为只有在必要的时候我们才重构成这样的形式.
+
+毕竟做工程最重要的还是时间, 要记住:
+
+* Don’t be Perl 6.
+* Set and meet deadlines.
+* Don’t change everything at once.
