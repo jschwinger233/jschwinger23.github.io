@@ -341,7 +341,7 @@ while read -d '' file; do echo $file; done &lt;&lt;&lt; $(echo "$(find . -print0
 $ while IFS= read -r -d '' file; do echo "$file"; done &lt;&lt;!
 &gt; $(find . -print0)
 &gt; !
-# wrong, Here Document purges \0
+# wrong, Command Substitution purges \0
 </code></pre></div></div>
 
 <p>这时候才真正体现出 Process Substitution 的优越性:</p>
