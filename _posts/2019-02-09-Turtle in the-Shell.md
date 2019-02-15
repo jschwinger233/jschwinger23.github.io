@@ -574,6 +574,14 @@ cmd1 <<< $(cmd2)
 
 这样每次通过 [hstr](https://github.com/dvorka/hstr) 翻出来之后直接加上最后三个参数就 okay.
 
+以及搜索服务发现的 JSON:
+
+```
+{ read upstream; vim -es +'g/'$upstream'/norm n%"ay%' +'redir>>/dev/stdout|echon @a' +qa /etc/nginx/service_deps/services.json; } <<<
+```
+
+结合 [Paste](https://pasteapp.me/) 粘贴板管理, 简直好用得很, 提升效率神器.
+
 当然如果你写个函数也是可以的, 但是函数的问题是不方便复制, 而我倾向于总是写完整的命令, 便于复制和复用. 同样的理由我不使用 `!!` 之类的东西.
 
 ---

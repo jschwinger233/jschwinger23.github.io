@@ -614,6 +614,13 @@ cmd1 &lt;&lt;&lt; $(cmd2)
 
 <p>这样每次通过 <a href="https://github.com/dvorka/hstr">hstr</a> 翻出来之后直接加上最后三个参数就 okay.</p>
 
+<p>以及搜索服务发现的 JSON:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{ read upstream; vim -es +'g/'$upstream'/norm n%"ay%' +'redir&gt;&gt;/dev/stdout|echon @a' +qa /etc/nginx/service_deps/services.json; } &lt;&lt;&lt;
+</code></pre></div></div>
+
+<p>结合 <a href="https://pasteapp.me/">Paste</a> 粘贴板管理, 简直好用得很, 提升效率神器.</p>
+
 <p>当然如果你写个函数也是可以的, 但是函数的问题是不方便复制, 而我倾向于总是写完整的命令, 便于复制和复用. 同样的理由我不使用 <code class="highlighter-rouge">!!</code> 之类的东西.</p>
 
 <hr />
