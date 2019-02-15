@@ -72,19 +72,20 @@ for line in $(cat file.txt); do echo "-> $line"; done
 ```
 # bash 的坑很多, 为了证明是 Command Substitution 的锅而不是 IFS 和 echo 的锅, 我运行了下面三行代码:
 
-# 首先证明 `echo` 能够打印 `\0` 的 IFS: 
-(IFS=$'\0' && od -a <(echo $IFS))
-# output: 0000000   nl
+# 首先证明 `echo` 会把 `\0` 作为字符串结束的标志:
+(IFS=$'ab\0cde' && od -a <(echo "$IFS"))
+# 0000000    a   b  nl
 
 # 再证明 echo Command Substitution 吃掉了 `\0` 
-od -a <(echo $(find . -name '*.md' -print0))
-# output: 0000000    .   /   b   .   m   d   .   /   a   .   m   d  nl
+od -a <(echo "$(find . -name '*.md' -print0)")
+# 0000000    .   /   b   .   m   d   .   /   a   .   m   d  nl
+# 如果有输出了 `\0` 那么 `echo` 理应截断输出, 然而没有
 
 # 最后再看 Process Substitution: 
 od -a <(find . -name '*.md' -print0)
 # output: 0000000    .   /   b   .   m   d nul   .   /   a   .   m   d nul
 
-# 后者多出的那个 `nul` 说明了一切.
+# 多出的那个 `nul` 说明了一切.
 ```
 
 所以如果文件中没有 `\n` 的话只能:
