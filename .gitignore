@@ -3,3 +3,4 @@
 *.swp
 *.py
 /tmp
+_site/
