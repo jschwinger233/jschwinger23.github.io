@@ -391,7 +391,6 @@ BTW, 更好的做好不是在 fork 后调用 `fd_pool.close_on_fork()`, 而是�
 这个 API 是非常重要的, 考虑一下 `WorkerManager.run()`:
 
 ```python
-
 class WorkerManager(object):
     def run(self):
         self._running = True
@@ -486,7 +485,7 @@ Generally, 它有以下几个步骤:
 
 1. 第一次 `fork`, 让父进程死掉, 这样子进程被一号进程收养. 这样 fork 出来的子进程也能成为进程组 leader, 这是下一步的前提.
 2. 子进程调用 `setsid` 变成 session leader, 从而完全脱离之前的控制终端A.
-3. 第二次 `fork`, 让子进程不再是 sesesion leader, 从而不可能获得控制终端.
+3. 第二次 `fork`, 让子进程不再是 session leader, 从而不可能获得控制终端.
 4. 清理进程 umask, 保证 daemon 创建文件时有权限.
 5. 切换进程的工作目录, 比如到根目录, 以防 daemon 占用了某个路径导致相应的文件系统不能 unmount.
 6. 关闭从父进程继承的文件描述符, 除非有特殊需要, 比如继承的 socket.
