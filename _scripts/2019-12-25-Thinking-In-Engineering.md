@@ -69,6 +69,14 @@ except Timeout:
 这件事情在 Python 里特简单, 直接 `concurrent.futures` 一波带走:
 
 ```python
+from concurrent.futures import ThreadPoolExecutor
+
+with ThreadPoolExecutor(max_works=10) as executor:
+    future = executor.submit(batch_get, keys)
+    futures.append(futures)
+
+for future in futures:
+    res.extend(future.result())
 ```
 
 但是用 Go 来做的话, 如果让小朋友来写的话第一次不是不知所措就是死锁.
@@ -76,23 +84,36 @@ except Timeout:
 这里有好几种思路, 但是最成熟的做法应该是用 fan-out fan-in pattern:
 
 ```go
+gw := GroupWait(10)
+for _ := range 10 {
+    go func() {
+        defer gw.Done()
+        ch <- batch_get(keys)
+    }
+}
+
+go func(){
+    defer close(ch)
+    gw.Wait()
+}
 ```
 
-要注意这里的要点是 Go channel 只能 close 一次, 因此最好保证只有一个 goroutine 写 channel, 否则多个 goroutine 写完后必须有一次同步才能 close.
+由于 Go 对 channel 的限制是只能 close 一次否则 panic, 同时 close 是广播通知, 因此一般情况下把 channel 视为单生产多消费(spmc)就没错了; 在真的需要 mpmc 的时候一定要用 fan-in fan-out 模式来做同步.
 
-有趣的是在 Rust 标准库里提供的 channel 是截然相反的 `std::sync::mpsc`, 即 multi-producer single-consumer FIFO, 这是因为 either 你可以用 `Arc<Mutex<Receiver<T>>>` 来做到 multi-consumers, or 可以用 crossbeam channel 轮子来完成.
+思考题: 在 Gevent 解决这个问题的时候可以直接用 Pool 抽象很方便地解决:
 
-最后再来看看 Go 版本的 concurrent.futures 和 Python 版本的 fan-out fan-in:
-
-```go
+```
+for _ in range(10);
+    pool.spawn(batch_get, keys)
+pool.wait()
 ```
 
-```python
-```
+那么在 Go 里面对应的 Pool 抽象是什么?
 
-任何一个成熟的工程师都应该能够在一开始的 etcd bulky get 问题上立刻映射到 fan-out fan-in pattern, 这题也在我的面试题库中用来衡量一位 Go 程序员的专业程度.
 
 ## 3. leak
+
+
 
 ## 4. timeout
 
