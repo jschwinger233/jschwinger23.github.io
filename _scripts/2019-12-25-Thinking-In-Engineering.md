@@ -4,9 +4,7 @@ layout: post
 
 2015 年 12 月 18 日周五, 我在北京找到了第一份程序员工作, 一蹦一跳从望京出来.
 
-2016 年的生日, 我在空间里写下 "我非常害怕，四年后的我，在数据库底层、操作系统底层，HTTP 协议、并发、分布式系统都没有深入地理解，掌握着一门或者几门脚本语言却 BUG 辈出。"
-
-转眼就是四年后了, 我走了一万一千里路站在这里, 总算培养出一些评判代码好坏的纲领, 索性记录一下当前对工程的思考.
+转眼就是四年后了, 我走了一万一千里路站在这里, 总算培养出一些评判代码好坏的纲领, 索性记录一下当前对工程的思考, 也算是对这四年的总结.
 
 # 1. 并发细节
 
@@ -78,7 +76,7 @@ except Timeout:
     pass
 ```
 
-## 1.2 fan-out, fan-in
+## 1.2 Fan-out, Fan-in
 
 我们要做大量的 etcd get, 想用 etcd bulky get 来提升性能, 然而 etcd bulky get 一个请求只能携带... 忘了多少个 key 了, 假设 150 个吧, 因此我们要用多个*程发 bulky get 最后把结果收回来.
 
@@ -125,7 +123,7 @@ pool.wait()
 那么在 Go 里面对应的 Pool 抽象是什么?
 
 
-## 1.3 leak
+## 1.3 Leak
 
 协程泄漏是在 Go 流行后才引起大家重视, 然而在线程场景下依然非常常见.
 
@@ -183,9 +181,9 @@ def race_fetch(n):
 
 # 2. 工程细节
 
-工程细节是指构成一份工业级代码的必要细节, 没有这些细节的代码仓库一概被我称为**.
+一些我认为很重要, 却不怎么见到别人提到, 但在工作中常被其他人写得一塌糊涂的工程小问题.
 
-## 2.1 graceful termination
+## 2.1 Graceful Termination
 
 graceful termination 已经在我过去已经多次提及了, 基本语义是"不再接收请求并等待现有请求处理完毕".
 
@@ -256,28 +254,26 @@ s.mu.Unlock()
 
 不过一旦项目架构不合理, 那要做的事情可就多了去了.
 
-# 2.2 Connection Pool
+## 2.2 Connection Pool
 
 连接池向来是企业级 library 必备模块, 但是我见过太多垃圾透顶的实现了.
 
 先说一个工业级别的连接池应该有哪些功能:
 
-服务端连接池:
-
-客户端连接池:
 1. pool size: 容量;
 2. ttl: 超时关闭;
 3. cycle interval: 清理 idle 的间隔时间;
-4. get connection 和 release connection 必须线程安全;
-5. `CLOSE_WAIT` 的正确处理: idle 连接可能被服务端关闭, 应用必须及时处理 FINed 半关闭连接;
+4. race condition: get connection 和 release connection 必须线程安全;
+5. `CLOSE_WAIT`: idle 连接可能被服务端关闭, 应用必须及时处理 FINed 半关闭连接;
 
 此外有个二选一项目:
 1. get connection timeout: 取连接池的等待超时;
-2. 或者让 pool size 定义为 idle 容量, 可以任意 get connection, 但是用完后最多保持 pool size 个 idle 连接;
+2. 或者让 pool size 定义为 idle 容量, 可以任意 get connection, 但是用完后最多保持 pool size 个 idle 连接; 在这种情况下需要再多一个参数:
+3. inactivity time, 超过 inactivity time 的 idle 连接才会为了保持 pool size 而清理;
 
 做一些说明:
 
-1. pool size 作为 idle 容量且可以任意 get connection 是 Nginx 的 upstream connection pool 行为;
+1. pool size 作为 idle 容量且可以任意 get connection 是 Nginx 的 upstream connection pool 行为, 我觉得作为软限制是很好的设计;
 2. 作为客户端的连接池 ttl 是必要的, 不仅是因为及时释放服务端的 fd, 也可以规避 NAT 定时器的问题;
 
 然而我见过大部分玩家连个线程安全都做得稀烂, 更别说 `CLOSE_WAIT` 的处理了.
@@ -319,15 +315,116 @@ class ConnectionPool:
 
 这个小组件可以说是能够对工程师的工程能力以小见大地进行判断, 希望大家多思考, 多写出工业级别的代码.
 
-# 2.3 FSM
+## 2.3 FSM
 
+Finite-state machine 有限状态机, 别说用不到, 我随手举出一些工程上的例子:
 
-## 3. Architecture
+1. TCP 套接字状态变化
+2. 异步任务的状态跟踪
+3. 监控分布式服务的状态
+4. 容器/进程生命周期的管理
+5. ~~正则表达式匹配 3 的倍数~~
 
-认识太多
+采用状态机思考的最大好处是状态变化一目了然, 在绘制状态转换图和状态表的时候可以轻易发现逻辑 bug, 同时非常有利于编程建模.
 
-# 3.1 layer
+比放说中央已经决定了使用 state pattern 去实现 FSM, 来看一个简单的例子(直接从 Rust Book ch17-03 抄袭的), 博客发布需要经历的状态:
 
-# 2.2 HTTP API (REST)
+![post FSM](https://github.com/jschwinger23/jschwinger23.github.io/blob/master/data/fsm.png?raw=true)
+
+假如用 state pattern 去做的话大概是这样的:
+
+```go
+type PostState interface {
+    Cancel() (PostState, error)
+    Review() (PostState, error)
+    Approve() (PostState, error)
+    Modify() (PostState, error)
+    Content() (string, error)
+}
+
+type Draft struct {
+    buf string
+}
+
+func (d *Draft) Cancel() (PostState, error) {
+    return d, nil
+}
+
+func (d *Draft) Review() (PostState, error) {
+    return NewPreview(d.buf), nil
+}
+
+func (d *Draft) Approve() (PostState, error) {
+    return nil, ErrInvalidAction
+}
+```
+
+之类的一大堆乏味的代码, 最后的调用是:
+
+```go
+type Post struct {
+    state PostState
+}
+
+func (p *Post) Review() (err error) {
+    p.state, err = p.state.Review()
+    return
+}
+
+func (p *Post) Approve() (err error) {
+    p.state, err = p.state.Approve()
+    return
+}
+```
+
+之类的又是一大堆乏味的代码.
+
+从这里就可以看到 state pattern 实现状态机最饱受批判的地方: 必须对所有状态实现所有方法, 同时这样也造成了扩展性的问题: 假如之后在某状态新增了新动作, 则不得不在所有状态都实现一遍, 即使对大部分状态都无意义, 而且这也破坏了开放封闭原则.
+
+有些时候反模式也许是不错的, 比方说:
+
+```go
+type DraftPost struct {
+    buf string
+}
+
+func (d *DraftPost) Review() PreviewPost {
+    return NewPreviewPost(d.buf)
+}
+
+type PreviewPost struct {}
+
+func (p *Preview) ApprovePost() PublishedPost {}
+```
+
+不过这样的话外部调用必须跟踪每一步骤返回值:
+
+```go
+preview := draft.Review()
+published := preview.Approve()
+content := published.Content()
+```
+
+而不能像之前始终是一个动作:
+
+```go
+err = post.Review()
+err = post.Approve()
+content, err := post.Content()
+```
+
+ 这是用和不用 state pattern 的 trade-offs.
+
+不过无论如何, Python 旧类的魔幻行为我是从来很反对的, 欣赏一下 runtime 切换实例的类型:
+
+专门提到 FSM 是因为它其实远比大部分人想象得更常见, 但是大部分人又在本该用 FSM 去思考的时候沉迷于 if-else / switch-case 而错过了优雅的建模方式, 殊不知复杂业务的工程建模正是编程里最有趣最有挑战的部分之一.
+
+# 3. Structure
+
+谈项目结构而不是架构, 集中在单个项目的结构管理
+
+## 3.1 Layer
+
+## 2.2 HTTP API (REST)
 
 我当然不是说 RESTful API 是最吼的, 但是它所反映的思想是清晰的, 是有适用的场景的.
