@@ -8,7 +8,7 @@ layout: post
 
 你看转眼就是四年后了, 我走了一万一千里路站在这里, 总算培养出一些评判代码好坏的纲领, 索性记录一下当前对工程的思考.
 
-# 1. 并发
+# 1. 并发细节
 
 并发这个主题早在 2018 年 6 月乘坐悉尼到 New Castle 的火车时就思绪万千了, 当时读着都能背诵下来的 Python Cookbook 第 13 章, 心里想着各种各样的话题: 惊群, 自旋锁, self-pipe trick...
 
@@ -62,7 +62,7 @@ except Timeout:
     pass
 ```
 
-## 2. fan-out, fan-in
+## 1.2 fan-out, fan-in
 
 我们要做大量的 etcd get, 想用 etcd bulky get 来提升性能, 然而 etcd bulky get 一个请求只能携带... 忘了多少个 key 了, 假设 150 个吧, 因此我们要用多个*程发 bulky get 最后把结果收回来.
 
@@ -111,7 +111,7 @@ pool.wait()
 那么在 Go 里面对应的 Pool 抽象是什么?
 
 
-## 3. leak
+## 1.3 leak
 
 协程泄漏是在 Go 流行后才引起大家重视, 然而在线程场景下依然非常常见.
 
@@ -167,9 +167,82 @@ def race_fetch(n):
 
 类似的情况, 当返回第一个结果后, 其他的线程将阻塞在 `q.put()`.
 
-## 4. graceful termination
+# 2. 工程细节
 
+工程细节是指构成一份工业级代码的必要细节, 没有这些细节的代码仓库一概被我称为**.
 
+## 2.1 graceful termination
+
+graceful termination 已经在我过去已经多次提及了, 基本语义是"不再接收请求并等待现有请求处理完毕".
+
+常规做法是:
+
+1. 设置全局结束 flag, 在收到信号时 toggle.
+2. 不再接收请求; 对于服务器而言就是不再 accept, 对 daemon 而言就是不再接收事件
+3. 等待正在处理的请求结束, 一般做法是让所有新请求从并发池里获取, 那么这时候直接等待并发池为空就可以了.
+
+照抄 Gunicorn 的代码:
+
+```
+for server in servers:
+    server.close()
+
+# Handle current requests until graceful_timeout
+ts = time.time()
+while time.time() - ts <= self.cfg.graceful_timeout:
+    accepting = 0
+    for server in servers:
+        if server.pool.free_count() != server.pool.size:
+            accepting += 1
+
+    # if no server is accepting a connection, we can exit
+    if not accepting:
+        return
+
+    self.notify()
+    gevent.sleep(1.0)
+
+# Force kill all active the handlers
+for server in servers:
+    server.stop(timeout=1)
+```
+
+gunicorn 的实现是连接池对应并发池, 因此数连接数就可以了; 不过正因为没有并发池的抽象, 导致没有一个集成到事件循环的 wait 方法, 只能 sleep, 很菜的样子.
+
+看看 Go 的做法, 照抄 grpc-server:
+
+```
+s.mu.Lock()
+for lis := range s.lis {
+    lis.Close()
+}
+s.lis = nil
+
+// Wait for serving threads to be ready to exit.  Only then can we be sure no
+// new conns will be created.
+s.mu.Unlock()
+s.serveWG.Wait()
+s.mu.Lock()
+
+for len(s.conns) != 0 {
+    s.cv.Wait()
+}
+s.conns = nil
+
+if s.events != nil {
+    s.events.Finish()
+    s.events = nil
+}
+s.mu.Unlock()
+```
+
+看下来就是三件套: 停止新请求, 等待 `serveWG` (counts active Serve goroutines), 清理其他变量(`events` 是容器事件日志, `cv` 是连接关闭广播).
+
+只要项目架构合理, 做起来并不复杂.
+
+不过一旦项目架构不合理, 那要做的事情可就多了去了.
+
+思考题: 假如我的 daemon 是多进程 worker 模式, 主进程和 worker 进程之间用 IPC 通讯(所以不是 Nginx 或者 Gunicorn 那种主从 daemon 结构), 这种情况下应该怎么做 graceful termination?
 
 1.2 curd
 restful api design, pagination
