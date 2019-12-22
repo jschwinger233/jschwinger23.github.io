@@ -4,7 +4,7 @@ layout: post
 
 2015 年 12 月 18 日周五, 我在北京找到了第一份程序员工作, 一蹦一跳从望京出来.
 
-2016 年的生日, 我在空间里写下 "我非常害怕，一年后，两年后，三年后，四年后的我，拿着别人看来还不错的薪水，却在数据库底层、操作系统底层，HTTP 协议、并发、分布式系统都没有深入地理解，掌握着一门或者几门脚本语言写个 C++ 却 BUG 辈出。我觉得特别害怕。"
+2016 年的生日, 我在空间里写下 "我非常害怕，四年后的我，在数据库底层、操作系统底层，HTTP 协议、并发、分布式系统都没有深入地理解，掌握着一门或者几门脚本语言却 BUG 辈出。"
 
 转眼就是四年后了, 我走了一万一千里路站在这里, 总算培养出一些评判代码好坏的纲领, 索性记录一下当前对工程的思考.
 
@@ -66,7 +66,7 @@ for {
 }
 ```
 
-但是实际上这么写太神经病了, 重点是掌握思想, 这里的本质思想是对*程生命周期的控制, 然后具体的情况来处理 context.
+但是实际上这么写太神经病了, 重点是掌握思想, 这里的本质思想是对*程生命周期的控制, 然后具体的情况具体实施.
 
 思考题: 实现线程版本的 `gevent.Timeout`:
 
@@ -256,16 +256,78 @@ s.mu.Unlock()
 
 不过一旦项目架构不合理, 那要做的事情可就多了去了.
 
-思考题: 假如我的 daemon 是多进程 worker 模式, 主进程和 worker 进程之间用 IPC 通讯(所以不是 Nginx 或者 Gunicorn 那种主从 daemon 结构), 这种情况下应该怎么做 graceful termination?
+# 2.2 Connection Pool
 
-# 2.2 HTTP API
+连接池向来是企业级 library 必备模块, 但是我见过太多垃圾透顶的实现了.
 
-1.2 curd
-restful api design, pagination
-architecture: layer
-modeling
+先说一个工业级别的连接池应该有哪些功能:
 
-1.3 os
-signal
-process management: dumb-init, daemon, pid 1
-terminal
+服务端连接池:
+
+客户端连接池:
+1. pool size: 容量;
+2. ttl: 超时关闭;
+3. cycle interval: 清理 idle 的间隔时间;
+4. get connection 和 release connection 必须线程安全;
+5. `CLOSE_WAIT` 的正确处理: idle 连接可能被服务端关闭, 应用必须及时处理 FINed 半关闭连接;
+
+此外有个二选一项目:
+1. get connection timeout: 取连接池的等待超时;
+2. 或者让 pool size 定义为 idle 容量, 可以任意 get connection, 但是用完后最多保持 pool size 个 idle 连接;
+
+做一些说明:
+
+1. pool size 作为 idle 容量且可以任意 get connection 是 Nginx 的 upstream connection pool 行为;
+2. 作为客户端的连接池 ttl 是必要的, 不仅是因为及时释放服务端的 fd, 也可以规避 NAT 定时器的问题;
+
+然而我见过大部分玩家连个线程安全都做得稀烂, 更别说 `CLOSE_WAIT` 的处理了.
+
+来看一个最简单的实现, 连 size 都没有的那种:
+
+```python
+class ConnectionPool:
+    def __init__(self):
+        self._available_connections = []
+        self._in_use_connections = set()
+
+    def get(self):
+        while True:
+            try:
+                connection = self._available_connections.pop()
+                self.validate(connection)
+                break
+            except IndexError:
+                connection = self.make_connection()
+                break
+            except OSError:
+                with suppress(Exception):
+                    connection.close()
+
+        self._in_use_connections.add(connection)
+        return connection
+
+    def release(self, connection):
+        self._in_use_connections.remove(connection)
+        self._available_connections.append(connection)
+```
+
+和很多人预料的不同, 这段代码是正儿八经地线程安全, 因为 CPython 的实现里 list.append / list.pop 和 set.add / set.remove 都是原子的, 因此完全没有必要写大段的性能低下的互斥锁.
+
+其次, 由于采用 FIFO (list)存储可复用的连接, 可能会导致大量的 `CLOSE_WAIT` 的连接积压在栈的底部造成严重的连接泄漏; 要解决这个问题甚至可以简单把栈换成 FILO (like deque)就可以了.
+
+作为一个自用的小项目这个 pool 可以说是基本够用了, 只要把数据结构改成 deque, 但是作为工业级连接池还应该实现一个计时器每秒(cycle interval)检查连接的 idle time, 超过 ttl 就清理; 如果超过 pool size 就从老到新清理 idle; 最好对 `CLOSE_WAIT` 也进行周期检查.
+
+这个小组件可以说是能够对工程师的工程能力以小见大地进行判断, 希望大家多思考, 多写出工业级别的代码.
+
+# 2.3 FSM
+
+
+## 3. Architecture
+
+认识太多
+
+# 3.1 layer
+
+# 2.2 HTTP API (REST)
+
+我当然不是说 RESTful API 是最吼的, 但是它所反映的思想是清晰的, 是有适用的场景的.
