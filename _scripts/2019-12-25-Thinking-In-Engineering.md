@@ -2,19 +2,15 @@
 layout: post
 ---
 
-> 副标题: 我为什么觉得~~大~~部分同事是垃圾
-
-2015 年冬我从非洲裸辞, 在北京找到了第一份程序员工作, 至今正好快四年了.
+2015 年 12 月 18 日周五, 我在北京找到了第一份程序员工作, 一蹦一跳从望京出来.
 
 2016 年的生日, 我在空间里写下 "我非常害怕，一年后，两年后，三年后，四年后的我，拿着别人看来还不错的薪水，却在数据库底层、操作系统底层，HTTP 协议、并发、分布式系统都没有深入地理解，掌握着一门或者几门脚本语言写个 C++ 却 BUG 辈出。我觉得特别害怕。"
 
-你看这就是第四年了, 我站在这里, where the streets have no name.
-
-写了这么多垃圾代码, 我也总算培养出一些评判代码好坏标准的规则, 所以这次想谈谈(我所认为的)四年工程经验的程序员应该掌握的工程素养.
+你看转眼就是四年后了, 我走了一万一千里路站在这里, 总算培养出一些评判代码好坏的纲领, 索性记录一下当前对工程的思考.
 
 # 1. 并发
 
-并发这个主题早在 2018 年 6 月乘坐悉尼到 New Castle 的火车时就想思绪万千了, 当时读着都能背诵下来的 Python Cookbook 第 13 章, 心里想着各种各样的话题: 惊群, 自旋锁, self-pipe trick...
+并发这个主题早在 2018 年 6 月乘坐悉尼到 New Castle 的火车时就思绪万千了, 当时读着都能背诵下来的 Python Cookbook 第 13 章, 心里想着各种各样的话题: 惊群, 自旋锁, self-pipe trick...
 
 ## 1.1 Context
 
@@ -22,48 +18,48 @@ layout: post
 
 先跳出来思考, 在没有 Context 的世界一般我们是如何中断一个正在运行的线程/协程(以下简称`*程`)的:
 
-1. 生产者向队列插入 sentinel
+1. 通过变量在旁路控制
 
-```python
+也就是说消费者在取消息前都先判断一个布尔变量 `running`, 若为 false 则不再消费. 注意由于设置变量不具备通知能力, 所以可能要在取消息前后都要检查一次变量:
+
+```
+class Dispatcher:
+    def run(self):
+        while self.running:
+            try:
+                msg = self.queue.get(timeout=1)
+            except Timeout:
+                continue
+            if not self.running:
+                return
 ```
 
-生产者消费者模型的好处在于临界区被严格控制在队列对象中, 因此极大减少了并发编程时数据同步的心智负担.
+2. 通过 IO 多路复用在旁路控制
 
-2. 通过变量在旁路控制
+这个做法能解决的问题是可以在 IO 阻塞处中断(如上面的 `queue.get(timeout=1)`), 所利用的技术是 self-pipe trick, 伪代码是这样的:
 
-```python
+```
+def run():
+    while True:
+        readable, _, _ = select([queue, pipe], [], [])
+        if pipe in readable:
+            return
+        if queue in readable:
+            msg = queue.get()
 ```
 
-这种做法的好处是简单, 事实上这是标准的 "接收信号退出事件循环结束进程" 做法, 也是我最喜欢的做法. 在接下来的 graceful termination 里还会遇到.
+我们会发现这本质上和 Go 的 Context 用法是一样的.
 
-3. 通过 IO 多路复用在旁路控制
+这里的本质思想是对*程的控制.
 
-```python
-// gunicorn
+思考题: 实现线程版本的 `gevent.Timeout`:
+
 ```
-
-这就很妖了, 但其实这种做法有着通过变量控制所不企及的优势: 可以在 IO 阻塞处中断, 而上一种做法只能在 IO 恢复后回到循环里才能中断.
-
-再看看 Go 里 Context 的典型用法:
-
-```go
-```
-
-我们会发现其实这本质上居然是和第三种做法一样的, 都是阻塞在多个 IO 上通过多路复用接受旁路通知.
-
-插入一句, Go Context 有一个问题是 regular file IO 无法被中断:
-
-```go
-```
-
-这是由于 select / poll / epoll (以下简称`多路复用模型`)无法处理 regular file IO, 太菜了, 写得不好的话会造成严重的*程泄漏.
-
-总结一下, Context 的本质思想是`中断*程`, 正确理解了这个思想的话那么应该在任何 IO 阻塞点监听 `<-context.Done()`; 此外用其他语言做并发开发时也应该考虑到这一点, 这就是我想表达的`工程素养`: 对*程的中断和控制是严格必须执行的.
-
-用 Go 举两个极端的例子, 一般大家不会这么写:
-
-```go
-// context in loop
+try:
+    with timeout(1):
+        do()
+except Timeout:
+    pass
 ```
 
 ## 2. fan-out, fan-in
