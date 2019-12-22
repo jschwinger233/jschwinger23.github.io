@@ -50,7 +50,7 @@ def run():
 
 我们会发现这本质上和 Go 的 Context 用法是一样的.
 
-这里的本质思想是对*程的控制.
+这里的本质思想是对*程生命周期的控制.
 
 思考题: 实现线程版本的 `gevent.Timeout`:
 
@@ -113,15 +113,63 @@ pool.wait()
 
 ## 3. leak
 
+协程泄漏是在 Go 流行后才引起大家重视, 然而在线程场景下依然非常常见.
+
+先看一个常见的泄漏, 用 Go 实现一个 `Timeout(time.Duration, func() error)`:
+
+```
+func WithTimeout(timeout time.Duration, f func() error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	var err error
+	data := make(chan error)
+	go func() {
+		data <- f()
+	}()
+	select {
+	case <- ctx.Done():
+		return types.ErrTimeout
+	case err := <- data:
+		return err
+	}
+}
+```
+
+这里的泄漏非常典型, 在 `f()` 超时的情况下, `select` 会退出导致没有消费者消费 `data` channel, 这样当 `f()` 最终返回时, `go func() { data <- f() }` 这个协程会永远阻塞在 `data <-` 上从而无法释放, 导致泄漏.
+
+网上的垃圾博客会教大家在只要创建 channel 时预留缓冲区就可以了: `data := make(chan error, 1)`, 当然这可以解决问题, 但是更好的做法应该是利用 context:
+
+```
+go func() {
+    select {
+    case data <- f(): return
+    case <-ctx.Done(): return
+    }
+}
+```
+
+这样的话一旦超时协程立刻会退出.
+
+不过这样还是不够好, 这样依然会导致 `f()` 的运行, 最好的做法传入 context 到 `f()` 里, 从而对协程进行打断和控制; 这里我再次强调对协程生命周期的控制这一重要思想.
+
+而线程泄漏则是大家在过去很容易忽略的地方, 来看这个例子:
+
+```
+def race_fetch(n):
+    def f(q):
+        q.put(fetch())
+
+    q = Queue()
+    for _ in range(n):
+        Thread(target=f, args=(q,)).start()
+    return q.get()
+```
+
+类似的情况, 当返回第一个结果后, 其他的线程将阻塞在 `q.put()`.
+
+## 4. graceful termination
 
 
-## 4. timeout
-
-## 5. graceful termination
-
-## chewing over: high level abstract of goroutine in Go
-
-## chewing over: correct abstract for coroutine in Python
 
 1.2 curd
 restful api design, pagination
