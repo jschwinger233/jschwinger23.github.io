@@ -6,7 +6,7 @@ layout: post
 
 2016 年的生日, 我在空间里写下 "我非常害怕，一年后，两年后，三年后，四年后的我，拿着别人看来还不错的薪水，却在数据库底层、操作系统底层，HTTP 协议、并发、分布式系统都没有深入地理解，掌握着一门或者几门脚本语言写个 C++ 却 BUG 辈出。我觉得特别害怕。"
 
-你看转眼就是四年后了, 我走了一万一千里路站在这里, 总算培养出一些评判代码好坏的纲领, 索性记录一下当前对工程的思考.
+转眼就是四年后了, 我走了一万一千里路站在这里, 总算培养出一些评判代码好坏的纲领, 索性记录一下当前对工程的思考.
 
 # 1. 并发细节
 
@@ -22,7 +22,7 @@ layout: post
 
 也就是说消费者在取消息前都先判断一个布尔变量 `running`, 若为 false 则不再消费. 注意由于设置变量不具备通知能力, 所以可能要在取消息前后都要检查一次变量:
 
-```
+```python
 class Dispatcher:
     def run(self):
         while self.running:
@@ -38,7 +38,7 @@ class Dispatcher:
 
 这个做法能解决的问题是可以在 IO 阻塞处中断(如上面的 `queue.get(timeout=1)`), 所利用的技术是 self-pipe trick, 伪代码是这样的:
 
-```
+```python
 def run():
     while True:
         readable, _, _ = select([queue, pipe], [], [])
@@ -50,11 +50,27 @@ def run():
 
 我们会发现这本质上和 Go 的 Context 用法是一样的.
 
-这里的本质思想是对*程生命周期的控制.
+严格来说, 我们必须对一切操作 channel 的地方同时处理 context, 比如说迭代操作 `for v := range ch {}` 理论上应该写做:
+
+```go
+loop:
+for {
+    select {
+    case <- ctx.Done();
+        break loop
+    case maybeV, ok := <- ch:
+        if !ok {
+            return
+        }
+    }
+}
+```
+
+但是实际上这么写太神经病了, 重点是掌握思想, 这里的本质思想是对*程生命周期的控制, 然后具体的情况来处理 context.
 
 思考题: 实现线程版本的 `gevent.Timeout`:
 
-```
+```python
 try:
     with timeout(1):
         do()
@@ -69,8 +85,6 @@ except Timeout:
 这件事情在 Python 里特简单, 直接 `concurrent.futures` 一波带走:
 
 ```python
-from concurrent.futures import ThreadPoolExecutor
-
 with ThreadPoolExecutor(max_works=10) as executor:
     future = executor.submit(batch_get, keys)
     futures.append(futures)
@@ -102,7 +116,7 @@ go func(){
 
 思考题: 在 Gevent 解决这个问题的时候可以直接用 Pool 抽象很方便地解决:
 
-```
+```python
 for _ in range(10);
     pool.spawn(batch_get, keys)
 pool.wait()
@@ -117,7 +131,7 @@ pool.wait()
 
 先看一个常见的泄漏, 用 Go 实现一个 `Timeout(time.Duration, func() error)`:
 
-```
+```go
 func WithTimeout(timeout time.Duration, f func() error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -139,7 +153,7 @@ func WithTimeout(timeout time.Duration, f func() error) error {
 
 网上的垃圾博客会教大家在只要创建 channel 时预留缓冲区就可以了: `data := make(chan error, 1)`, 当然这可以解决问题, 但是更好的做法应该是利用 context:
 
-```
+```python
 go func() {
     select {
     case data <- f(): return
@@ -154,7 +168,7 @@ go func() {
 
 而线程泄漏则是大家在过去很容易忽略的地方, 来看这个例子:
 
-```
+```python
 def race_fetch(n):
     def f(q):
         q.put(fetch())
@@ -183,7 +197,7 @@ graceful termination 已经在我过去已经多次提及了, 基本语义是"�
 
 照抄 Gunicorn 的代码:
 
-```
+```python
 for server in servers:
     server.close()
 
@@ -211,7 +225,7 @@ gunicorn 的实现是连接池对应并发池, 因此数连接数就可以了; �
 
 看看 Go 的做法, 照抄 grpc-server:
 
-```
+```go
 s.mu.Lock()
 for lis := range s.lis {
     lis.Close()
@@ -243,6 +257,8 @@ s.mu.Unlock()
 不过一旦项目架构不合理, 那要做的事情可就多了去了.
 
 思考题: 假如我的 daemon 是多进程 worker 模式, 主进程和 worker 进程之间用 IPC 通讯(所以不是 Nginx 或者 Gunicorn 那种主从 daemon 结构), 这种情况下应该怎么做 graceful termination?
+
+# 2.2 HTTP API
 
 1.2 curd
 restful api design, pagination
