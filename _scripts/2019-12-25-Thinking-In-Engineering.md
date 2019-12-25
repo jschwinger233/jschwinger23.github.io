@@ -431,11 +431,14 @@ content, err := post.Content()
 
 ![layer](https://github.com/jschwinger23/jschwinger23.github.io/blob/master/data/layer.png?raw=true)
 
-**分层架构的基本原则**: 上层只与下层耦合; 严格分层架构要求上层只能和相邻的下层耦合, 松散分层架构允许上层同任意下层耦合.
+0. **分层架构的基本原则**
+
+* ~~上层只与下层耦合; 严格分层架构要求上层只能和相邻的下层耦合, 松散分层架构允许上层同任意下层耦合.~~这是古典分层理论, 下面的现代理论取代了这一条.
+* 依赖倒置: 上层不依赖下层, 它们都只依赖抽象; 抽象不依赖实现, 实现依赖抽象.
 
 1. **Presentation Layer**
 
-UI 层处理安全, 协议, 对外数据展示.
+Presentation 层处理安全, 协议, 对外数据展示.
 
 Presentation 与下层的区别是这一层连模型(Model)都接触不到, 传入给下层与从下层获得的数据都是 primitive type.
 
@@ -454,6 +457,141 @@ Business 层与下层的区别是这一层不关心基础设施细节, 缓存, �
 4. **Infrastructure Layer**
 
 Infra 层实现所需要的基础设施, 数据库, 队列, 分布式存储...
+
+Infra 层与上层的区别是这一层不关心业务逻辑, 但是关心业务模型.
+
+---
+
+来看一个简单的例子(直接从 Alistair Cockburn 的 [hexagonal architecture](https://web.archive.org/web/20180822100852/alistair.cockburn.us/Hexagonal+architecture) 照抄..)
+
+提供一个简单的服务, 输入产品 ID 和 amount, 返回总价格, 折扣率随 amount 变化, 从数据库查取.
+
+### Presention Layer
+
+假设这个服务接受两种协议的请求: GRPC 和 HTTP, 那么表现层将负责这两种协议的翻译:
+
+先在表现层定义下层的接口:
+
+```go
+// presentation/interface.go
+type Application interface {
+    CalculateCost(productID int, amount int) (float64, error)
+}
+```
+
+然后分别实现两种协议:
+
+HTTP:
+
+```go
+// presentation/http/server.go
+type HTTPServer {
+    App Application
+}
+
+func (s *HTTPServer) ServeHTTP() {
+    http.HandleFunc("/cost", func(w http.ResponseWriter, req *http.Request) {
+        amount, err := strconv.Atoi(req.FromValue("amount"))
+        productID, err := strconv.ParseFloat(req.FromValue("product_id"))
+        cost, err := s.App.CalculateCost(productID, amount)
+        fmt.Fprintf(w, "{"cost": %f}", cost)
+    })
+}
+```
+
+GRPC:
+
+```go
+// presentation/grpc/server.go
+type GRPCServer {
+    App Applicaiton
+}
+
+func (s *GRPCServer) ServerGRPC {
+    server := grpc.NewServer()
+    pb.RegisterServer(server, s)
+    err := server.Serve()
+}
+
+func (s *GRPCServer) CalculateCost(ctx context.Context, req *pb.CalculateCostRequest) (*pb.CostReply, error) {
+    return &pb.CostReply{Cost: s.App.Calculate(req.ProductID, req.Amount)}, nil
+}
+```
+
+HTTPServer 与 GRPCServer 里的 App 是在 main 函数里依赖注入的(DI).
+
+### Application Layer
+
+应用层讲道理应该从表现层导入接口, 然而由于 Go 独特的接口设计导致不需要 import, 所以看不出`依赖倒置`, 在其他语言里 (Rust / Java) 则会看到`下层 import 上层` 这一重要特征.
+
+老规矩, 先定义下层接口:
+
+```go
+// application/interface.go
+type Repo interface {
+    GetProduct(int) (Product, error)
+}
+
+type Product interface {
+    CalculateCost(amount int) (float64, error)
+}
+```
+
+```go
+// application/app.go
+type App {
+    Repo
+}
+
+func (a *App) CalculateCost(productID int, amount int) (float64, error) {
+    product, err := a.Repo.GetProduct(id)
+    return product.CalculateCost(amount)
+}
+```
+
+我们发现应用层定义了基础层和业务层的两个接口, 在松散分层架构时这是很正常的.
+
+### Business Layer
+
+再次提醒依赖倒置原则和依赖注入在每一层的实现, 只是因为 Go 实现接口不需要导入接口定义所以没有反映出来.
+
+```go
+// business/interface.go
+type Repo interface {
+    GetDiscountRate(productID int, amount int) (float64, error)
+}
+```
+
+```go
+// business/model.go
+type Product {
+    price   float64
+    ID      int
+    Repo
+}
+
+func (p Product) CalculateCost(amount int) (float64, error) {
+    rate, err := p.Repo.GetDiscountRate(p.ID, amount)
+    return rate * p.price * amount, err
+}
+```
+
+### Infra Layer
+
+基础层只要分别实现在应用层和业务层定义的接口就可以了:
+
+```go
+// infra/repo.go
+type Repo struct {}
+
+func (r *Repo) GetProduct(productID int) (Product, error) {
+    ...
+}
+
+func (r *Repo) GetDiscountRate(productID int, amount int) (float64, error) {
+    ...
+}
+```
 
 ## 2.2 HTTP API (REST)
 
