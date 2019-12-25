@@ -2,9 +2,9 @@
 layout: post
 ---
 
-2015 年 12 月 18 日周五, 我在北京找到了第一份程序员工作, 一蹦一跳从望京出来.
+> 算是年度总结好了...
 
-转眼就是四年后了, 我走了一万一千里路站在这里, 总算培养出一些评判代码好坏的纲领, 索性记录一下当前对工程的思考, 也算是对这四年的总结.
+2015-12-18 至今四年了, 写了一万一千行垃圾代码, 我总算培养出一些评判代码好坏的纲领, 索性记录一下当前对工程的思考, 也算是对这四年的总结.
 
 # 1. 并发细节
 
@@ -66,16 +66,6 @@ for {
 
 但是实际上这么写太神经病了, 重点是掌握思想, 这里的本质思想是对*程生命周期的控制, 然后具体的情况具体实施.
 
-思考题: 实现线程版本的 `gevent.Timeout`:
-
-```python
-try:
-    with timeout(1):
-        do()
-except Timeout:
-    pass
-```
-
 ## 1.2 Fan-out, Fan-in
 
 我们要做大量的 etcd get, 想用 etcd bulky get 来提升性能, 然而 etcd bulky get 一个请求只能携带... 忘了多少个 key 了, 假设 150 个吧, 因此我们要用多个*程发 bulky get 最后把结果收回来.
@@ -112,7 +102,7 @@ go func(){
 
 由于 Go 对 channel 的限制是只能 close 一次否则 panic, 同时 close 是广播通知, 因此一般情况下把 channel 视为单生产多消费(spmc)就没错了; 在真的需要 mpmc 的时候一定要用 fan-in fan-out 模式来做同步.
 
-思考题: 在 Gevent 解决这个问题的时候可以直接用 Pool 抽象很方便地解决:
+再回过头看一下, Gevent 解决这个问题的时候可以直接用 Pool 抽象很方便地解决:
 
 ```python
 for _ in range(10);
@@ -122,6 +112,15 @@ pool.wait()
 
 那么在 Go 里面对应的 Pool 抽象是什么?
 
+`sync.WaitGroup` 可以完成类似的功能, 不过实际上在 `golang.org/x/sync/errgroup` 里实现了这个抽象 `Group`, 那么在此抽象下实现 fan-out fan-in 就很容易了:
+
+```go
+g, ctx := errgroup.WithContext(ctx)
+for _ := range(10) {
+    g.Go(func() error {return batch_get(keys)})
+}
+err := g.Wait()
+```
 
 ## 1.3 Leak
 
@@ -485,7 +484,7 @@ HTTP:
 
 ```go
 // presentation/http/server.go
-type HTTPServer {
+type HTTPServer struct {
     App Application
 }
 
@@ -503,7 +502,7 @@ GRPC:
 
 ```go
 // presentation/grpc/server.go
-type GRPCServer {
+type GRPCServer struct {
     App Applicaiton
 }
 
@@ -539,7 +538,7 @@ type Product interface {
 
 ```go
 // application/app.go
-type App {
+type App struct {
     Repo
 }
 
@@ -564,7 +563,7 @@ type Repo interface {
 
 ```go
 // business/model.go
-type Product {
+type Product struct {
     price   float64
     ID      int
     Repo
@@ -581,7 +580,7 @@ func (p Product) CalculateCost(amount int) (float64, error) {
 基础层只要分别实现在应用层和业务层定义的接口就可以了:
 
 ```go
-// infra/repo.go
+// infra/mysql/repo.go
 type Repo struct {}
 
 func (r *Repo) GetProduct(productID int) (Product, error) {
@@ -593,6 +592,172 @@ func (r *Repo) GetDiscountRate(productID int, amount int) (float64, error) {
 }
 ```
 
-## 2.2 HTTP API (REST)
+而如果要测试的话, 只要实现一套实现了接口的 Repo 在 `infra/dummy/repo.go` 就可以很容易完成.
 
-我当然不是说 RESTful API 是最吼的, 但是它所反映的思想是清晰的, 是有适用的场景的.
+## 2.2 HTTP API (RESTful)
+
+我当然不是说 RESTful API 是最吼的, 但是它所反映的思想是清晰的, 是有适用场景的.
+
+然而很多年轻的工程师从网上看了几篇垃圾文章说 REST 有局限性就睡服了自己不去学习, 在具体的场景下问为什么不用 REST 又说不出到底哪里局限了, 实是令人扼腕.
+
+由于大部分同学已经对 RESTful 的定义有所了解, 我们直接上例子.
+
+---
+
+一个简单的例子, 实现个人 profile API, 可以查看和上传头像, 修改头像和昵称.
+
+好吧这是我司的 Entry Task, 然而我居然一个 RESTful 都没见到过, WTF???
+
+只要把 Profile 视作资源, 那么直接闭着眼睛写:
+
+* GET `/api/v1/profiles/:id` -> `{"id": ".", "name": ".", "portrait": "."}`
+* GET `/api/v1/profiles/:id?fields=portrait` -> (bytes of picture)
+* PUT `/api/v1/profiles/:id` + `{"id": ".", "name": "new name", "portrait": "new portrait.."}` -> ...
+* PATCH `/api/v1/profiles/:id` + `{"name":"new name"}` -> ...
+* PATCH `/api/v1/profiles/:id` + `[{"op":"replace", "path": "/name", "value", "new name"}]` -> ...
+
+讨论:
+
+### 1. GET
+
+GET 方法虽然简单, 但是有种情况要区分清楚:
+
+* GET list: `GET /items` 返回资源列表(集合), 其中每个对象只有 ID
+* GET: `GET /items/:id` 返回具体的资源
+* GET list with filter: `GET /items?limit=25&offeset=50` 返回资源的第 51~75 个
+* GET with filter: `GET /items/:id?fields=:property` 返回指定对象的指定属性, 而返回的类型由 `Accept` 指定
+
+所以在设计返回头像图片的时候, 准确来说请求应该是:
+
+```http
+GET /api/v1/profiles/:id?fields=portrait HTTP/1.1
+Accept: image/jpeg
+```
+才应该直接返回 bytes, 否则若 `Accept: application/json` 的话返回应该是 JSON `{"portrait": "..."}`.
+
+此外作为工程素养, 任何的 GET list 必须有 pagination, 我已经见过无数不做分页然后资源一多就根本 list 不出来, 我指出问题居然还给我说做分页会导致性能问题...
+
+再有一点, 返回对象是大字节资源时, 比如图片, 可以采用 range GET 的方法, 具体来说是这样的:
+
+1. HEAD `/profiles?fields=portrait`
+
+得到响应:
+
+```http
+HTTP/1.1 200 OK
+
+Accept-Ranges: bytes
+Content-Type: image/jpeg
+Content-Length: 2000
+```
+
+2. GET `/profiles?fields=portrait` + Header `Range: bytes=0-999` 请求前 1000 字节
+
+得到响应:
+
+```http
+HTTP/1.1 206 Partial Content
+
+Accept-Ranges: bytes
+Content-Type: image/jpeg
+Content-Length: 1000
+Content-Range: bytes 0-999/2000
+```
+
+### 2. Related Resources
+
+关联对象的 RESTful 表达向来是个难题. 比方说我们要表达公司->事业部->组的关系时候, 很容易写出
+
+```
+/corporations/:id/groups/:id/teams/:id
+```
+
+这样的级联关系, 然而这很容易失控, 比如跨级查询指定公司的所有组, Google 提供的方案是
+
+```
+/corporations/:id/groups/-/teams
+```
+
+倒也不是不行, 不过再复杂一点, 比如你的 Django 建模的时候 Group 有三个 fields 是 UniqueTogether, 那么按照这个 key 去查的话, Google 提供的方案是
+
+```
+/corporations/:id/groups/uniq_field1/uniq_field2/uniq_field3/
+```
+
+或者写成过滤倒也不是不可以, 只不过语义的话过滤查询返回的是集合:
+
+```
+/corporations/:id/groups?uniq_field1=a&uniq_field2=b&uniq_field3=c
+```
+
+而且如果想继续往下一级查询 team 的话, 可就不能接着写 `.../teams` 了, URL dispatch 系统都会混乱的.
+
+Azure 提供的方案是 HATEOAS, 限制只有一级关联:
+
+```
+GET /corporations/:id
+
+{
+    "id": "0",
+    "links": [
+        {
+            "rel": "group",
+            "href": "/groups/1",
+            "action": "GET",
+            "types": ["application/json"]
+        }
+    ]
+}
+```
+
+具体的设计只能看具体的工程情况去决定了.
+
+### 3. Update Resource
+
+更新资源是非常常见的需求, 然而却是翻车最惨烈的地方.
+
+首先要区分好 PUT 和 PATCH 的语义:
+
+* PUT 是全量提交, 创建或修改资源
+  * PUT `/items` 创建对象, 语义和 POST 相同, 若已有资源返回 409
+  * PUT `/items/:id` 修改对象, 提交的 body 必须包含所有字段, 若资源不存在返回 404
+  * PUT 是幂等操作
+* PATCH 是部分提交, 修改资源
+  * JSON merge patch (rfc7396) 可以修改 / 删除 / 新增指定字段, 在删除字段时指定值为 `null`, 缺失字段保持不变
+  * JSON patch (rfc6902) 可以字符串和列表进行 add / remove / replace / move / copy / test 操作
+  * PATCH 在 JSON merge patch 时才幂等, 在 JSON patch 时候无法保证
+
+那么例子中的两个请求做了相同的事情, 更新名字并删除头像, 一个是 JSON merge patch:
+
+```
+PATCH /api/v1/profiles/:id HTTP/1.1
+Content-Type: application/merge-patch+json
+
+{"name":"new name", "portrait":null}
+```
+
+第二个是 JSON patch:
+
+```
+PATH /api/v1/profiles/:id HTTP/1.1
+Content-Type: application/json-patch+json
+
+[
+    {"op":"replace", "path": "/name", "value", "new name"},
+    {"op":"remove", "path": "/portrait"},
+]
+```
+
+注意两个请求的 Header 一个是 `application/merge-patch+json` 一个是 `application/json-patch+json`,
+
+PATCH 操作的重要性在分布式系统里有一些比较好的应用, 考虑一下这个场景, 有个内部 DNS 服务器提供了 web API 更新 DNS, 只提供 PUT 请求会有什么问题.
+
+问题在于一个分布式系统作为客户端时必须先 GET 已有的 DNS record 才能 PUT 更新, 而这由于不是原子操作, 在 GET 当前 DNS(请求1) 与 PUT 新 DNS(请求2) 之间可能有其他请求更新了 DNS(请求3), 导致这个请求3更新的数据在请求2完成后全部丢失了.
+
+如果提供了 JSON patch 操作的话, 就可以安全地并发更新了.
+
+# 4. 总结
+
+我特么圣诞节不玩游戏在这里写博客...
+
+希望下个四年自己能成为更厉害的人, 多挣一点钱. 就酱.
