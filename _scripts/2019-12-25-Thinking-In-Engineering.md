@@ -413,17 +413,47 @@ err = post.Approve()
 content, err := post.Content()
 ```
 
- 这是用和不用 state pattern 的 trade-offs.
+这是用和不用 state pattern 的 trade-offs.
 
-不过无论如何, Python 旧类的魔幻行为我是从来很反对的, 欣赏一下 runtime 切换实例的类型:
+~~话说回来, 在古代 Python 里有一招可以 runtime 切换实例的 `__class__` 从而改变类型, 的 FSM 实现方式, 虽然大家都说不好, 但其实我觉得还挺带感, 尤其旧类还比新类快都不知道哪里去了(~~
 
 专门提到 FSM 是因为它其实远比大部分人想象得更常见, 但是大部分人又在本该用 FSM 去思考的时候沉迷于 if-else / switch-case 而错过了优雅的建模方式, 殊不知复杂业务的工程建模正是编程里最有趣最有挑战的部分之一.
 
-# 3. Structure
+# 3. Project Design
 
-谈项目结构而不是架构, 集中在单个项目的结构管理
+且不说架构, 只论单项目的设计, 毫不夸张地说, 大部分工作两年的工程师做出来的东西就是一堆屎山.
 
 ## 3.1 Layer
+
+分层理论可不是傻叉的 MVC, MVC 的每一层和其他层深度耦合, 呈现一个三角依赖关系, 假设我们要新增一个服务协议 GRPC,  用 MVC 都没法开放封闭, 基本就是一个垃圾.
+
+来看经典分层理论:
+
+![layer](https://github.com/jschwinger23/jschwinger23.github.io/blob/master/data/layer.png?raw=true)
+
+**分层架构的基本原则**: 上层只与下层耦合; 严格分层架构要求上层只能和相邻的下层耦合, 松散分层架构允许上层同任意下层耦合.
+
+1. **Presentation Layer**
+
+UI 层处理安全, 协议, 对外数据展示.
+
+Presentation 与下层的区别是这一层连模型(Model)都接触不到, 传入给下层与从下层获得的数据都是 primitive type.
+
+2. **Application Layer**
+
+App 层处理事务, 安全和事件, 由这一层驱动保证一致性.
+
+App 层与下层的区别是这一层不处理业务逻辑, 只作为业务逻辑层的客户端调用服务接口, 也能是直接调用模型的方法, 也可能是调用业务服务, 是很轻量的一层.
+
+3. **Business Layer**
+
+Business 层是建模与实际业务所在的层, 是最重最复杂的层.
+
+Business 层与下层的区别是这一层不关心基础设施细节, 缓存, 持久化 ...
+
+4. **Infrastructure Layer**
+
+Infra 层实现所需要的基础设施, 数据库, 队列, 分布式存储...
 
 ## 2.2 HTTP API (REST)
 
