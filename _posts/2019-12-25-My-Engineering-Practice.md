@@ -16,7 +16,7 @@ layout: post
 
 先跳出来思考, 在没有 Context 的世界一般我们是如何中断一个正在运行的线程/协程(以下简称`*程`)的:
 
-1. 通过变量在旁路控制
+1\. 通过变量在旁路控制
 
 也就是说消费者在取消息前都先判断一个布尔变量 `running`, 若为 false 则不再消费. 注意由于设置变量不具备通知能力, 所以可能要在取消息前后都要检查一次变量:
 
@@ -32,7 +32,7 @@ class Dispatcher:
                 return
 ```
 
-2. 通过 IO 多路复用在旁路控制
+2\. 通过 IO 多路复用在旁路控制
 
 这个做法能解决的问题是可以在 IO 阻塞处中断(如上面的 `queue.get(timeout=1)`), 所利用的技术是 self-pipe trick, 伪代码是这样的:
 
@@ -430,30 +430,30 @@ content, err := post.Content()
 
 ![layer](https://github.com/jschwinger23/jschwinger23.github.io/blob/master/data/layer.png?raw=true)
 
-0. **分层架构的基本原则**
+0\. **分层架构的基本原则**
 
 * ~~上层只与下层耦合; 严格分层架构要求上层只能和相邻的下层耦合, 松散分层架构允许上层同任意下层耦合.~~这是古典分层理论, 下面的现代理论取代了这一条.
 * 依赖倒置: 上层不依赖下层, 它们都只依赖抽象; 抽象不依赖实现, 实现依赖抽象.
 
-1. **Presentation Layer**
+1\. **Presentation Layer**
 
 Presentation 层处理安全, 协议, 对外数据展示.
 
 Presentation 与下层的区别是这一层连模型(Model)都接触不到, 传入给下层与从下层获得的数据都是 primitive type.
 
-2. **Application Layer**
+2\. **Application Layer**
 
 App 层处理事务, 安全和事件, 由这一层驱动保证一致性.
 
 App 层与下层的区别是这一层不处理业务逻辑, 只作为业务逻辑层的客户端调用服务接口, 也能是直接调用模型的方法, 也可能是调用业务服务, 是很轻量的一层.
 
-3. **Business Layer**
+3\. **Business Layer**
 
 Business 层是建模与实际业务所在的层, 是最重最复杂的层.
 
 Business 层与下层的区别是这一层不关心基础设施细节, 缓存, 持久化 ...
 
-4. **Infrastructure Layer**
+4\. **Infrastructure Layer**
 
 Infra 层实现所需要的基础设施, 数据库, 队列, 分布式存储...
 
