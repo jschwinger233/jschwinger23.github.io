@@ -1,0 +1,20 @@
+@startuml
+object Topic {
+	id = 0
+}
+
+object Round {
+	id = 0
+}
+object Question {
+	id = 0
+	content = 'to be or not to be?'
+}
+object Answer {
+	id = 0
+	content = 'not to be'
+}
+
+Topic "1" *-- "many" Round
+Round "1" *-- "many" Question
+Round "1" *-- "1" Answer

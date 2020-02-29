@@ -1,0 +1,15 @@
+@startuml
+[*] --> Draft
+Draft --> Preview: review
+Draft --> Draft: cancel / abort
+Preview --> Published: approve
+Preview --> Draft: cancel / abort
+Published --> Draft: modify
+Draft: review()
+Draft: cancel()
+Draft: abort()
+Preview: approve()
+Preview: cancel()
+Preview: abort()
+Published: content()
+@enduml
