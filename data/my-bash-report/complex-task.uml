@@ -1,0 +1,5 @@
+@startuml
+[cmd1] -down-> [cmd2]
+[cmd1] -down-> [cmd3]
+[cmd2] -right-> [cmd3]
+@enduml

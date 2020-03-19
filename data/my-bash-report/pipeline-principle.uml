@@ -1,0 +1,9 @@
+@startuml
+[cmd1] .right.> stdout1
+stdout1 -down-> stdin2
+stdin2 .right.> [cmd2]
+[cmd2] .right.> stdout2
+stdout2 -down-> stdin3
+stdin3 .right.> [cmd3]
+[cmd3] .right.> stdout3
+@enduml

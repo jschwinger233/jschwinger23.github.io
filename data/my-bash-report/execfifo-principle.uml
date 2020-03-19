@@ -1,0 +1,6 @@
+@startuml
+[cmd1] --> fd1: stdout
+fd1 --> [cmd2]: stdint
+[cmd2] --> fd2: stdout
+fd2 --> [cmd3]: stdint
+@enduml

@@ -1,0 +1,9 @@
+@startuml
+[cat file.txt] -down-> [tee]
+[tee] -right-> [count "the"]
+[count "the"] -right-> fd3: stdout
+[tee] -down-> stdin
+stdin - [ if (read <&3) > 10; then grep <&0 ]
+fd3 - [ if (read <&3) > 10; then grep <&0 ]
+@enduml
+
