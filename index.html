@@ -407,6 +407,8 @@ Error message and password prompt
 
 <li>$:/theme</li>
 
+<li>$:/themes/tiddlywiki/centralised</li>
+
 <li>$:/themes/tiddlywiki/snowwhite</li>
 
 <li>$:/themes/tiddlywiki/tight</li>
@@ -10263,16 +10265,16 @@ Error message and password prompt
 <div created="20200629100056058" creator="zc" modified="20200629170608924" modifier="zc" title="$:/state/tab--2112689675">
 <pre>$:/core/ui/ControlPanel/Basics</pre>
 </div>
-<div created="20200629100918452" creator="zc" modified="20200629172044720" modifier="zc" title="$:/state/tab--219645345">
-<pre>$:/core/ui/ControlPanel/Plugins/Add/Plugins</pre>
+<div created="20200629100918452" creator="zc" modified="20200629173139479" modifier="zc" title="$:/state/tab--219645345">
+<pre>$:/core/ui/ControlPanel/Plugins/Add/Themes</pre>
 </div>
-<div created="20200629100035389" creator="zc" modified="20200629172028478" modifier="zc" title="$:/state/tab--86143343">
-<pre>$:/core/ui/ControlPanel/Plugins/Installed/Plugins</pre>
+<div created="20200629100035389" creator="zc" modified="20200629173134652" modifier="zc" title="$:/state/tab--86143343">
+<pre>$:/core/ui/ControlPanel/Plugins/Installed/Themes</pre>
 </div>
 <div created="20200629100058592" creator="zc" modified="20200629170333636" modifier="zc" title="$:/state/tab--959111941">
 <pre>$:/core/ui/ControlPanel/TiddlerFields</pre>
 </div>
-<div created="20200629095437717" creator="zc" modified="20200629172025704" modifier="zc" title="$:/state/tab-1749438307">
+<div created="20200629095437717" creator="zc" modified="20200629173206037" modifier="zc" title="$:/state/tab-1749438307">
 <pre>$:/core/ui/ControlPanel/Plugins</pre>
 </div>
 <div created="20200629095441074" creator="zc" modified="20200629095441074" modifier="zc" title="$:/state/tab-2065006209">
@@ -10287,7 +10289,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div list="$:/ControlPanel [[hi there]] zc" title="$:/StoryList">
+<div created="20200629173208308" creator="zc" list="$:/ControlPanel $:/themes/tiddlywiki/centralised [[hi there]] zc" modified="20200629173208308" modifier="zc" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -11301,17 +11303,28 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
 <div author="JeremyRuston" core-version="&gt;=5.0.0" created="20200629100806787" creator="zc" dependents="" description="Basic theme" modified="20200629100806787" modifier="zc" name="Vanilla" original-plugin-type="theme" original-tags="" original-title="$:/themes/tiddlywiki/vanilla" original-type="application/json" plugin-priority="0" requires-reload="no" server-url="https://tiddlywiki.com/library/v5.1.22/index.html" tags="$:/tags/RemoteAssetInfo" title="$:/temp/RemoteAssetInfo/https://tiddlywiki.com/library/v5.1.22/index.html/$:/themes/tiddlywiki/vanilla" type="text/vnd.tiddlywiki" version="5.1.22">
 <pre></pre>
 </div>
-<div created="20200629100810293" creator="zc" modified="20200629172048745" modifier="zc" title="$:/temp/RemoteAssetSearch/$:/config/OfficialPluginLibrary">
-<pre>highlight</pre>
+<div created="20200629100810293" creator="zc" modified="20200629173141972" modifier="zc" title="$:/temp/RemoteAssetSearch/$:/config/OfficialPluginLibrary">
+<pre></pre>
 </div>
 <div created="20200629165437308" creator="zc" modified="20200629165759988" modifier="zc" title="$:/temp/search">
 <pre>control</pre>
 </div>
-<div created="20200629172051692" creator="zc" modified="20200629172051692" modifier="zc" tags="$:/tags/ServerConnection" title="$:/temp/ServerConnection/https://tiddlywiki.com/library/v5.1.22/index.html" url="https://tiddlywiki.com/library/v5.1.22/index.html">
+<div created="20200629173144971" creator="zc" modified="20200629173144971" modifier="zc" tags="$:/tags/ServerConnection" title="$:/temp/ServerConnection/https://tiddlywiki.com/library/v5.1.22/index.html" url="https://tiddlywiki.com/library/v5.1.22/index.html">
 <pre>loaded</pre>
 </div>
 <div created="20200629100946956" creator="zc" modified="20200629170043710" modifier="zc" title="$:/theme">
 <pre>$:/themes/tiddlywiki/vanilla</pre>
+</div>
+<div author="JeremyRuston" core-version="&gt;=5.0.0" dependents="$:/themes/tiddlywiki/snowwhite" description="Centralises the story river" name="Centralised" plugin-type="theme" title="$:/themes/tiddlywiki/centralised" type="application/json" version="5.1.22">
+<pre>{
+    &quot;tiddlers&quot;: {
+        &quot;$:/themes/tiddlywiki/centralised/styles.tid&quot;: {
+            &quot;title&quot;: &quot;$:/themes/tiddlywiki/centralised/styles.tid&quot;,
+            &quot;tags&quot;: &quot;[[$:/tags/Stylesheet]]&quot;,
+            &quot;text&quot;: &quot;\\rules only filteredtranscludeinline transcludeinline macrodef macrocallinline\n\n@media (min-width: {{$:/themes/tiddlywiki/vanilla/metrics/sidebarbreakpoint}}) {\n\n\thtml .tc-page-container {\n\t\ttext-align: center;\n\t}\n\n\thtml .tc-story-river {\n\t\tposition: relative;\n\t\twidth: 770px;\n\t\tpadding: 42px;\n\t\tmargin: 0 auto;\n\t\ttext-align: left;\n\t}\n\n\thtml .tc-sidebar-scrollable {\n\t\ttext-align: left;\n\t\tleft: 50%;\n\t\tright: 0;\n\t\tmargin-left: 343px;\n\t}\n}\n&quot;
+        }
+    }
+}</pre>
 </div>
 <div author="JeremyRuston" core-version="&gt;=5.0.0" dependents="$:/themes/tiddlywiki/vanilla" description="Emphasises individual tiddlers" name="Snow White" plugin-priority="0" plugin-type="theme" title="$:/themes/tiddlywiki/snowwhite" type="application/json" version="5.1.22">
 <pre>{
