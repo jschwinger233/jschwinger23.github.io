@@ -165,6 +165,8 @@ Error message and password prompt
 
 <li>$:/SiteTitle</li>
 
+<li>$:/state/showeditpreview</li>
+
 <li>$:/state/tab--2112689675</li>
 
 <li>$:/state/tab--219645345</li>
@@ -177,10 +179,6 @@ Error message and password prompt
 
 <li>$:/state/tab-2065006209</li>
 
-<li>$:/state/tab/moresidebar-1850697562</li>
-
-<li>$:/state/tab/sidebar--595412856</li>
-
 <li>$:/status/RequireReloadDueToPluginChange</li>
 
 <li>$:/status/UserName</li>
@@ -188,6 +186,8 @@ Error message and password prompt
 <li>$:/StoryList</li>
 
 <li>$:/temp/info-plugin</li>
+
+<li>$:/temp/NewTagName</li>
 
 <li>$:/temp/RemoteAssetInfo/https://tiddlywiki.com/library/v5.1.22/index.html/$:/languages/ca-ES</li>
 
@@ -10164,6 +10164,9 @@ Error message and password prompt
 <div created="20200629095252123" modified="20200629095300163" title="$:/SiteTitle">
 <pre>The Infinite Sadness</pre>
 </div>
+<div created="20200629165501323" creator="zc" modified="20200629165533929" modifier="zc" title="$:/state/showeditpreview">
+<pre>yes</pre>
+</div>
 <div created="20200629100056058" creator="zc" modified="20200629100056058" modifier="zc" title="$:/state/tab--2112689675">
 <pre>$:/core/ui/ControlPanel/Advanced</pre>
 </div>
@@ -10179,14 +10182,8 @@ Error message and password prompt
 <div created="20200629095437717" creator="zc" modified="20200629164458573" modifier="zc" title="$:/state/tab-1749438307">
 <pre>$:/core/ui/ControlPanel/Saving</pre>
 </div>
-<div created="20200629095441074" creator="zc" modified="20200629165348284" modifier="zc" title="$:/state/tab-2065006209">
+<div created="20200629095441074" creator="zc" modified="20200629095441074" modifier="zc" title="$:/state/tab-2065006209">
 <pre>$:/core/ui/ControlPanel/Saving/GitHub</pre>
-</div>
-<div created="20200629165306906" creator="zc" modified="20200629165306906" modifier="zc" title="$:/state/tab/moresidebar-1850697562">
-<pre>$:/core/ui/MoreSideBar/System</pre>
-</div>
-<div created="20200629165254573" creator="zc" modified="20200629165304070" modifier="zc" title="$:/state/tab/sidebar--595412856">
-<pre>$:/core/ui/SideBar/More</pre>
 </div>
 <div title="$:/status/RequireReloadDueToPluginChange">
 <pre>no</pre>
@@ -10194,7 +10191,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div created="20200629165337585" creator="zc" list="$:/ControlPanel [[hi there]]" modified="20200629165337585" modifier="zc" title="$:/StoryList">
+<div list="[[hi there]] $:/ControlPanel" title="$:/StoryList">
 <pre></pre>
 </div>
 <div plugin-type="info" title="$:/temp/info-plugin" type="application/json">
@@ -10254,6 +10251,9 @@ Error message and password prompt
         }
     }
 }</pre>
+</div>
+<div created="20200629165545746" creator="zc" modified="20200629165545746" modifier="zc" title="$:/temp/NewTagName">
+<pre></pre>
 </div>
 <div author="Paco Rivière" core-version="&gt;=5.0.0" created="20200629100806787" creator="zc" dependents="" description="Catalan (Spain)" icon="data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22810%22%20height%3D%22540%22%3E%0A%3Crect%20width%3D%22810%22%20height%3D%22540%22%20fill%3D%22%23FCDD09%22%2F%3E%0A%3Cpath%20stroke%3D%22%23DA121A%22%20stroke-width%3D%2260%22%20d%3D%22M0%2C90H810m0%2C120H0m0%2C120H810m0%2C120H0%22%2F%3E%0A%3C%2Fsvg%3E" modified="20200629100806787" modifier="zc" name="ca-ES" original-plugin-type="language" original-tags="" original-title="$:/languages/ca-ES" original-type="application/json" requires-reload="no" server-url="https://tiddlywiki.com/library/v5.1.22/index.html" tags="$:/tags/RemoteAssetInfo" title="$:/temp/RemoteAssetInfo/https://tiddlywiki.com/library/v5.1.22/index.html/$:/languages/ca-ES" type="text/vnd.tiddlywiki" version="5.1.22">
 <pre></pre>
@@ -11205,8 +11205,8 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
 <div created="20200629100810293" creator="zc" modified="20200629100920094" modifier="zc" title="$:/temp/RemoteAssetSearch/$:/config/OfficialPluginLibrary">
 <pre></pre>
 </div>
-<div created="20200629165321250" creator="zc" modified="20200629165322701" modifier="zc" title="$:/temp/search">
-<pre>control</pre>
+<div created="20200629165437308" creator="zc" modified="20200629165437395" modifier="zc" title="$:/temp/search">
+<pre>hi</pre>
 </div>
 <div created="20200629100806745" creator="zc" modified="20200629100806745" modifier="zc" tags="$:/tags/ServerConnection" title="$:/temp/ServerConnection/https://tiddlywiki.com/library/v5.1.22/index.html" url="https://tiddlywiki.com/library/v5.1.22/index.html">
 <pre>loaded</pre>
@@ -11334,11 +11334,12 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
     }
 }</pre>
 </div>
-<div created="20200629165153272" creator="zc" modified="20200629165246922" modifier="zc" tags="" title="hi there">
+<div created="20200629165444549" creator="zc" modified="20200629165551099" modifier="zc" tags="zc" title="hi there">
 <pre>```python
 def func():
-    print(123)
-```</pre>
+    print(1)
+```
+</pre>
 </div>
 
 
