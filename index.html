@@ -11467,8 +11467,9 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
 
 不过有一种简单的简化, 我们不用最终一致性, 而是只采用小事务+幂等性+有限状态机, 把一个大事务分拆成为多阶段多状态, 设计有限状态机, 那么一个请求就算失败也只可能在这几个阶段其中之一, 同时仔细设计幂等接口可以轻易补偿. 这么实现的一大好处是没有最终一致性的庞大的基础设施的要求, 同时我们有小事务, 代码好些, 异常情况下好 debug. 考虑一个大事务在失败的情况下回滚操作把一切都删得干干净净, 万一日志里的信息不足以判断异常就十分尴尬, 小事务多状态模型就好办得多.</pre>
 </div>
-<div author="zc" created="20200629171019808" creator="zc" modified="20200629174349188" modifier="zc" title="zc">
-<pre>目前在新加坡工作, 菜鸡, 马上被开除.</pre>
+<div author="zc" created="20200629171019808" creator="zc" modified="20200701174658613" modifier="zc" title="zc">
+<pre>第二故乡是卢旺达, 目前在新加坡工作.
+从来不读书, 不会写代码, 马上被开除.</pre>
 </div>
 
 
