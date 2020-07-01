@@ -10357,7 +10357,7 @@ Error message and password prompt
     }
 }</pre>
 </div>
-<div created="20200629165545746" creator="zc" modified="20200701165529382" modifier="zc" title="$:/temp/NewTagName">
+<div created="20200629165545746" creator="zc" modified="20200701172810850" modifier="zc" title="$:/temp/NewTagName">
 <pre></pre>
 </div>
 <div author="Paco Rivière" core-version="&gt;=5.0.0" created="20200629100806787" creator="zc" dependents="" description="Catalan (Spain)" icon="data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22810%22%20height%3D%22540%22%3E%0A%3Crect%20width%3D%22810%22%20height%3D%22540%22%20fill%3D%22%23FCDD09%22%2F%3E%0A%3Cpath%20stroke%3D%22%23DA121A%22%20stroke-width%3D%2260%22%20d%3D%22M0%2C90H810m0%2C120H0m0%2C120H810m0%2C120H0%22%2F%3E%0A%3C%2Fsvg%3E" modified="20200629100806787" modifier="zc" name="ca-ES" original-plugin-type="language" original-tags="" original-title="$:/languages/ca-ES" original-type="application/json" requires-reload="no" server-url="https://tiddlywiki.com/library/v5.1.22/index.html" tags="$:/tags/RemoteAssetInfo" title="$:/temp/RemoteAssetInfo/https://tiddlywiki.com/library/v5.1.22/index.html/$:/languages/ca-ES" type="text/vnd.tiddlywiki" version="5.1.22">
@@ -11461,9 +11461,11 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
     }
 }</pre>
 </div>
-<div author="zc" created="20200629165444549" creator="zc" draft.of="hi there" draft.title="2020-06-02 如何写业务逻辑中的事务" modified="20200701171501585" modifier="zc" tags="transaction ddd" title="Draft of 'hi there' by zc">
-<pre>按照 DDD 的说法, 我们应该避免大事务, 而是采用小事务+最终一致性, 而这一切的源头需要说服用户采用最终一致性的“用户故事”; 反过来事务又决定了建模的设计, DDD 要求以事务划分聚合, 避免大聚合和避免大事务在这里是相通的. 你会发现(非侵入性的) DDD 的设计流程是: 建立用户故事 - 划分事务 - 设计聚合模型, 我之所以说是非入侵性是因为我没有提到“领域”这个难懂的概念, 而且“领域”一般对应了“微服务”, “集成领域上下文“一般来说就是 remote API call, 我不提这些概念因为在讨论事务设计的本质的时候没有影响, 虽然在实现事务的时候远程调用和本地会导致 “if - then - rollback&quot; 原子调用需要额外的心智负担, 我之后会讨论.
-但是事实上</pre>
+<div author="zc" created="20200629165444549" creator="zc" draft.of="hi there" draft.title="2020-06-02 事务设计的思考" modified="20200701173613776" modifier="zc" tags="transaction ddd design" title="Draft of 'hi there' by zc">
+<pre>按照 DDD 的说法, 我们应该避免大事务, 而是采用小事务+最终一致性, 而这一切的源头需要说服用户采用最终一致性的“用户故事”; 反过来事务又决定了建模的设计, DDD 要求以事务划分聚合, 避免大聚合和避免大事务在这里是相通的. 你会发现(非侵入性的) DDD 的设计流程是: 建立用户故事 - 划分事务 - 设计聚合模型, 我之所以说是非入侵性是因为我没有提到“领域”这个难懂的概念, 而“领域”一般对应于“微服务”, “集成领域上下文“一般来说就是 remote API call, 我不提这些概念因为在讨论事务设计的本质的时候没有影响, 虽然在实现事务的时候远程调用与否会导致额外的心智负担去实现 “if - then - rollback&quot; 原子调用.
+但是事实上很多时候 DDD 里“和用户讨价还价要求采用小事务+最终一致性”是几乎不可能的, 首先说这么做的 ROI 就没法说, 程序员为了近乎偏执的原教旨主义和所谓的“建模优雅”去倒逼用户需求, 我都看不下去. 那么实现大事务就成为了必备技能了.
+另外再说两句, DDD 里要求的最终一致性对基础设施还有要求, 模型多阶段多状态意味着 saga 模式的引入(无论以怎样的形式, 就算只是一个 goroutine 跑后台也是 saga), 一个好的 saga 需要正确的高可用的 daemon 处理聚合模型有限状态机, 追踪事件并有定时器, 要有靠谱的消息队列和幂等事件设计, 要有补偿系统, 为了追溯事件, 除了日志可能还需要事件源设计, 我可以很负责任地说这些没有一个是省油的灯.
+不过有一种简单的简化, 我们不用最终一致性, 而是只采用小事务+幂等性+有限状态机, 把一个大事务分拆成为多阶段多状态, 设计有限状态机, 那么一个请求就算失败也只可能在这几个阶段其中之一, 同时仔细设计幂等接口可以轻易补偿. 这么实现的一大好处是没有最终一致性的庞大的基础设施的要求, 同时我们有小事务, 代码好些, 异常情况下好 debug. 考虑一个大事务在失败的情况下回滚操作把一切都删得干干净净, 万一日志里的信息不足以判断异常就十分尴尬, 小事务多状态模型就好办得多.</pre>
 </div>
 <div author="zc" created="20200629165444549" creator="zc" modified="20200629173019344" modifier="zc" tags="zc" title="hi there" version="201">
 <pre>```python
