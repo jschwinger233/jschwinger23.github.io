@@ -419,7 +419,7 @@ Error message and password prompt
 
 <li>2020-06-02 事务设计的思考</li>
 
-<li>zc</li>
+<li>about</li>
 
 </ul>
 </p>
@@ -10291,7 +10291,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div list="[[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
+<div list="[[2020-06-02 事务设计的思考]] about" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -10355,7 +10355,7 @@ Error message and password prompt
     }
 }</pre>
 </div>
-<div created="20200629165545746" creator="zc" modified="20200701172810850" modifier="zc" title="$:/temp/NewTagName">
+<div created="20200629165545746" creator="zc" modified="20200701174829668" modifier="zc" title="$:/temp/NewTagName">
 <pre></pre>
 </div>
 <div author="Paco Rivière" core-version="&gt;=5.0.0" created="20200629100806787" creator="zc" dependents="" description="Catalan (Spain)" icon="data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22810%22%20height%3D%22540%22%3E%0A%3Crect%20width%3D%22810%22%20height%3D%22540%22%20fill%3D%22%23FCDD09%22%2F%3E%0A%3Cpath%20stroke%3D%22%23DA121A%22%20stroke-width%3D%2260%22%20d%3D%22M0%2C90H810m0%2C120H0m0%2C120H810m0%2C120H0%22%2F%3E%0A%3C%2Fsvg%3E" modified="20200629100806787" modifier="zc" name="ca-ES" original-plugin-type="language" original-tags="" original-title="$:/languages/ca-ES" original-type="application/json" requires-reload="no" server-url="https://tiddlywiki.com/library/v5.1.22/index.html" tags="$:/tags/RemoteAssetInfo" title="$:/temp/RemoteAssetInfo/https://tiddlywiki.com/library/v5.1.22/index.html/$:/languages/ca-ES" type="text/vnd.tiddlywiki" version="5.1.22">
@@ -11467,7 +11467,7 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
 
 不过有一种简单的简化, 我们不用最终一致性, 而是只采用小事务+幂等性+有限状态机, 把一个大事务分拆成为多阶段多状态, 设计有限状态机, 那么一个请求就算失败也只可能在这几个阶段其中之一, 同时仔细设计幂等接口可以轻易补偿. 这么实现的一大好处是没有最终一致性的庞大的基础设施的要求, 同时我们有小事务, 代码好些, 异常情况下好 debug. 考虑一个大事务在失败的情况下回滚操作把一切都删得干干净净, 万一日志里的信息不足以判断异常就十分尴尬, 小事务多状态模型就好办得多.</pre>
 </div>
-<div author="zc" created="20200629171019808" creator="zc" modified="20200701174721181" modifier="zc" title="zc">
+<div author="zc" created="20200629171019808" creator="zc" modified="20200701174832495" modifier="zc" tags="about zc" title="about">
 <pre>第二故乡是卢旺达, 目前在新加坡工作.
 
 ---
