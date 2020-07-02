@@ -11810,7 +11810,7 @@ for i in $(ls -l /proc/336786/fd/ | awk -F: '/socket:/ {print $NF}'); do inode=$
 
 不过有一种简单的简化, 我们不用最终一致性, 而是只采用小事务+幂等性+有限状态机, 把一个大事务分拆成为多阶段多状态, 设计有限状态机, 那么一个请求就算失败也只可能在这几个阶段其中之一, 同时仔细设计幂等接口可以轻易通过重发请求进行补偿. 这么实现的一大好处是没有最终一致性的庞大的基础设施的要求, 同时我们有小事务, 代码好写, 异常情况下好 debug. 考虑一个大事务在失败的情况下回滚操作把一切都删得干干净净, 万一日志里的信息不足以判断异常就十分尴尬, 小事务多状态模型就好办得多.</pre>
 </div>
-<div created="20200702163003290" creator="zc" modified="20200702171331777" modifier="zc" tags="pattern design transaction go gof" title="2020-06-03 Command 模式">
+<div created="20200702163003290" creator="zc" modified="20200702171740039" modifier="zc" tags="pattern design transaction go gof" title="2020-06-03 Command 模式">
 <pre>这是我第一次写关于 GoF 设计模式的笔记, 所以我先说两句我对 GoF 的整体看法.
 
 GoF 写作于 web1.0 之前的软件工程时代, 你会发现里面的 motives 都是用各种 UI 交互作为 cases, 不过这并不影响它所表达的内在思想. 我总是说要真正理解 GoF 模式本质是要解决什么问题, 进入 Java 语境下去理解那些类的必要性, 然后再提炼出适合现代编程语言的使用方式, 比如动态语言和函数一等公民的语言一般都有各种更简单的实现方式, 不要拘泥于 GoF 的实现, 而是理解它所表达的思想: 解耦, 开放封闭, 等等. 事实上 GoF 作者之一就熟悉 Smalltalk 从而在实现小节里经常说起“动态语言就不用这样搞啦你直接 blah blah..”
@@ -11914,9 +11914,9 @@ func Execute(ctx context.Context, ttl time.Duration, cmds ...Command) error {
 
 这里的实现有几点考虑:
 
-1. 事务的 rollback 不可被请求 ctx 打断, 所以用 bg ctx
-2. 没有定义 rollback 时执行 then 就必须换成 bg ctx; 反过来说, 如果所有操作都有 rollback, 那么我们允许请求 ctx 在任意时候打断
-3. 对 bg ctx 加上了 timeout
+# 1. 事务的 rollback 不可被请求 ctx 打断, 所以用 bg ctx
+# 2. 没有定义 rollback 时执行 then 就必须换成 bg ctx; 反过来说, 如果所有操作都有 rollback, 那么我们允许请求 ctx 在任意时候打断
+# 3. 对 bg ctx 加上了 timeout
 
 那么这个事务的用法是
 
