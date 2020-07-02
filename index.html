@@ -10277,8 +10277,8 @@ Error message and password prompt
 <div created="20200702040001669" creator="zc" modified="20200702040001669" modifier="zc" title="$:/state/dropdown/keyboardshortcut/new-tiddler-286565879">
 <pre>open</pre>
 </div>
-<div created="20200629165501323" creator="zc" modified="20200701175734306" modifier="zc" title="$:/state/showeditpreview">
-<pre>no</pre>
+<div created="20200629165501323" creator="zc" modified="20200702053603857" modifier="zc" title="$:/state/showeditpreview">
+<pre>yes</pre>
 </div>
 <div created="20200629165649477" creator="zc" modified="20200629165649477" modifier="zc" title="$:/state/tab--1498284803">
 <pre>$:/core/ui/AdvancedSearch/Standard</pre>
@@ -11481,12 +11481,12 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
     }
 }</pre>
 </div>
-<div created="20200702035535408" creator="zc" modified="20200702053552049" modifier="zc" tags="linux shell lsof tools" title="2020-06-02 lsof 的本质">
-<pre>## TL;DR
+<div created="20200702035535408" creator="zc" modified="20200702053701669" modifier="zc" tags="linux shell lsof tools" title="2020-06-02 lsof 的本质">
+<pre>!! TL;DR
 
 `lsof -p` 通过遍历 `/proc/$PID/fd/`, 先获得 inode no, 再通过 `/proc/$PID/net/tcp{,6}` 得到端口等信息.
 
-## discussion 
+!! Discussion 
 
 比方说我们要在程序里去获得 `lsof -p$PID | grep $PORT` 的结果, 利用 fork + execvp 显然是行为艺术了, 所以大家开始研究 lsof 的实现.
 
