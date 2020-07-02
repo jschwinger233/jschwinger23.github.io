@@ -141,6 +141,8 @@ Error message and password prompt
 
 <p>This <a class="tc-tiddlylink-external" href="https://tiddlywiki.com" rel="noopener noreferrer" target="_blank">TiddlyWiki</a> contains the following tiddlers:</p><p><ul>
 
+<li>$:/config/shortcuts-mac/new-tiddler</li>
+
 <li>$:/config/shortcuts/excise</li>
 
 <li>$:/core</li>
@@ -172,6 +174,8 @@ Error message and password prompt
 <li>$:/SiteTitle</li>
 
 <li>$:/state/dropdown/keyboardshortcut/excise-286565879</li>
+
+<li>$:/state/dropdown/keyboardshortcut/new-tiddler-286565879</li>
 
 <li>$:/state/showeditpreview</li>
 
@@ -421,11 +425,11 @@ Error message and password prompt
 
 <li>$:/themes/tiddlywiki/vanilla</li>
 
+<li>2020-06-02 lsof 的本质</li>
+
 <li>2020-06-02 事务设计的思考</li>
 
 <li>about</li>
-
-<li>Draft of 'New Tiddler' by zc</li>
 
 </ul>
 </p>
@@ -441,6 +445,9 @@ Error message and password prompt
 <!--~~ Ordinary tiddlers ~~-->
 
 <div id="storeArea" style="display:none;">
+<div created="20200702040007367" creator="zc" modified="20200702040007367" modifier="zc" title="$:/config/shortcuts-mac/new-tiddler">
+<pre></pre>
+</div>
 <div created="20200702035423873" creator="zc" modified="20200702035423873" modifier="zc" title="$:/config/shortcuts/excise">
 <pre></pre>
 </div>
@@ -10267,6 +10274,9 @@ Error message and password prompt
 <div created="20200702035415089" creator="zc" modified="20200702035427321" modifier="zc" title="$:/state/dropdown/keyboardshortcut/excise-286565879">
 <pre>close</pre>
 </div>
+<div created="20200702040001669" creator="zc" modified="20200702040001669" modifier="zc" title="$:/state/dropdown/keyboardshortcut/new-tiddler-286565879">
+<pre>open</pre>
+</div>
 <div created="20200629165501323" creator="zc" modified="20200701175734306" modifier="zc" title="$:/state/showeditpreview">
 <pre>no</pre>
 </div>
@@ -10303,7 +10313,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div list="[[Draft of 'New Tiddler' by zc]] [[2020-06-02 事务设计的思考]] about" title="$:/StoryList">
+<div created="20200702035945377" creator="zc" list="[[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] about" modified="20200702035945377" modifier="zc" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -11471,6 +11481,294 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
     }
 }</pre>
 </div>
+<div created="20200702035535408" creator="zc" modified="20200702053552049" modifier="zc" tags="linux shell lsof tools" title="2020-06-02 lsof 的本质">
+<pre>## TL;DR
+
+`lsof -p` 通过遍历 `/proc/$PID/fd/`, 先获得 inode no, 再通过 `/proc/$PID/net/tcp{,6}` 得到端口等信息.
+
+## discussion 
+
+比方说我们要在程序里去获得 `lsof -p$PID | grep $PORT` 的结果, 利用 fork + execvp 显然是行为艺术了, 所以大家开始研究 lsof 的实现.
+
+先 `ulimit -n1024` 再利用 `strace -etrace=open,readlink -fT lsof -p $(pidof dockerd)` 可以看到
+
+```
+[pid 62843] open(&quot;/proc/locks&quot;, O_RDONLY) = 3 &lt;0.000026&gt;
+[pid 62843] open(&quot;/proc&quot;, O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 3 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/1/stat&quot;, O_RDONLY) = 4 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/2/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/4/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/6/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/7/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/8/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/9/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/10/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/11/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/12/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/13/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/14/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/15/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/16/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/17/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/18/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/19/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/20/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/21/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/22/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/23/stat&quot;, O_RDONLY) = 4 &lt;0.000020&gt;
+[pid 62843] open(&quot;/proc/24/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/25/stat&quot;, O_RDONLY) = 4 &lt;0.000039&gt;
+[pid 62843] open(&quot;/proc/26/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/27/stat&quot;, O_RDONLY) = 4 &lt;0.000029&gt;
+[pid 62843] open(&quot;/proc/28/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/29/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/30/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/34/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/35/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/77/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/78/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/79/stat&quot;, O_RDONLY) = 4 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/80/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/81/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/82/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/88/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/97/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/114/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/166/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/277/stat&quot;, O_RDONLY) = 4 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/330/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/331/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/399/stat&quot;, O_RDONLY) = 4 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/414/stat&quot;, O_RDONLY) = 4 &lt;0.000044&gt;
+[pid 62843] open(&quot;/proc/446/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/447/stat&quot;, O_RDONLY) = 4 &lt;0.000015&gt;
+[pid 62843] open(&quot;/proc/448/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/450/stat&quot;, O_RDONLY) = 4 &lt;0.000014&gt;
+[pid 62843] open(&quot;/proc/451/stat&quot;, O_RDONLY) = 4 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/474/stat&quot;, O_RDONLY) = 4 &lt;0.000015&gt;
+[pid 62843] open(&quot;/proc/598/stat&quot;, O_RDONLY) = 4 &lt;0.000059&gt;
+[pid 62843] open(&quot;/proc/605/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/606/stat&quot;, O_RDONLY) = 4 &lt;0.000015&gt;
+[pid 62843] open(&quot;/proc/608/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/609/stat&quot;, O_RDONLY) = 4 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/611/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/650/stat&quot;, O_RDONLY) = 4 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/663/stat&quot;, O_RDONLY) = 4 &lt;0.000074&gt;
+[pid 62843] open(&quot;/proc/759/stat&quot;, O_RDONLY) = 4 &lt;0.000020&gt;
+[pid 62843] open(&quot;/proc/760/stat&quot;, O_RDONLY) = 4 &lt;0.000065&gt;
+[pid 62843] open(&quot;/proc/761/stat&quot;, O_RDONLY) = 4 &lt;0.000019&gt;
+[pid 62843] open(&quot;/proc/765/stat&quot;, O_RDONLY) = 4 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/766/stat&quot;, O_RDONLY) = 4 &lt;0.000038&gt;
+[pid 62843] open(&quot;/proc/831/stat&quot;, O_RDONLY) = 4 &lt;0.000014&gt;
+[pid 62843] open(&quot;/proc/866/stat&quot;, O_RDONLY) = 4 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/1014/stat&quot;, O_RDONLY) = 4 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/1016/stat&quot;, O_RDONLY) = 4 &lt;0.000015&gt;
+[pid 62843] open(&quot;/proc/1017/stat&quot;, O_RDONLY) = 4 &lt;0.000014&gt;
+[pid 62843] open(&quot;/proc/1018/stat&quot;, O_RDONLY) = 4 &lt;0.000085&gt;
+[pid 62843] open(&quot;/proc/1076/stat&quot;, O_RDONLY) = 4 &lt;0.000014&gt;
+[pid 62843] open(&quot;/proc/1078/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/1083/stat&quot;, O_RDONLY) = 4 &lt;0.000015&gt;
+[pid 62843] open(&quot;/proc/1086/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/1088/stat&quot;, O_RDONLY) = 4 &lt;0.000073&gt;
+[pid 62843] open(&quot;/proc/1096/stat&quot;, O_RDONLY) = 4 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/1114/stat&quot;, O_RDONLY) = 4 &lt;0.000016&gt;
+[pid 62843] open(&quot;/proc/1118/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/1226/stat&quot;, O_RDONLY) = 4 &lt;0.000020&gt;
+[pid 62843] open(&quot;/proc/1351/stat&quot;, O_RDONLY) = 4 &lt;0.000074&gt;
+[pid 62843] open(&quot;/proc/1352/stat&quot;, O_RDONLY) = 4 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/1365/stat&quot;, O_RDONLY) = 4 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/2567/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/3437/stat&quot;, O_RDONLY) = 4 &lt;0.000016&gt;
+[pid 62843] open(&quot;/proc/21903/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/39250/stat&quot;, O_RDONLY) = 4 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/39318/stat&quot;, O_RDONLY) = 4 &lt;0.000073&gt;
+[pid 62843] open(&quot;/proc/39758/stat&quot;, O_RDONLY) = 4 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/39825/stat&quot;, O_RDONLY) = 4 &lt;0.000016&gt;
+[pid 62843] open(&quot;/proc/39826/stat&quot;, O_RDONLY) = 4 &lt;0.000025&gt;
+[pid 62843] open(&quot;/proc/39949/stat&quot;, O_RDONLY) = 4 &lt;0.000083&gt;
+[pid 62843] open(&quot;/proc/51252/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/53038/stat&quot;, O_RDONLY) = 4 &lt;0.000028&gt;
+[pid 62843] open(&quot;/proc/53475/stat&quot;, O_RDONLY) = 4 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/58124/stat&quot;, O_RDONLY) = 4 &lt;0.000015&gt;
+[pid 62843] open(&quot;/proc/58514/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/60844/stat&quot;, O_RDONLY) = 4 &lt;0.000016&gt;
+[pid 62843] open(&quot;/proc/61427/stat&quot;, O_RDONLY) = 4 &lt;0.000073&gt;
+[pid 62843] open(&quot;/proc/62841/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/62843/stat&quot;, O_RDONLY) = 4 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/62844/stat&quot;, O_RDONLY) = 4 &lt;0.000032&gt;
+[pid 62843] open(&quot;/proc/195953/stat&quot;, O_RDONLY) = 4 &lt;0.000020&gt;
+[pid 62843] open(&quot;/proc/196166/stat&quot;, O_RDONLY) = 4 &lt;0.000020&gt;
+[pid 62843] open(&quot;/proc/225336/stat&quot;, O_RDONLY) = 4 &lt;0.000020&gt;
+[pid 62843] open(&quot;/proc/231764/stat&quot;, O_RDONLY) = 4 &lt;0.000020&gt;
+[pid 62843] open(&quot;/proc/231781/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/231788/stat&quot;, O_RDONLY) = 4 &lt;0.000020&gt;
+[pid 62843] open(&quot;/proc/336786/stat&quot;, O_RDONLY) = 4 &lt;0.000020&gt;
+[pid 62843] readlink(&quot;/proc/336786/cwd&quot;, &quot;/&quot;, 4096) = 1 &lt;0.000037&gt;
+[pid 62843] readlink(&quot;/proc/336786/root&quot;, &quot;/&quot;, 4096) = 1 &lt;0.000031&gt;
+[pid 62843] readlink(&quot;/proc/336786/exe&quot;, &quot;/usr/bin/dockerd&quot;, 4096) = 16 &lt;0.000019&gt;
+[pid 62843] open(&quot;/proc/336786/maps&quot;, O_RDONLY) = 4 &lt;0.000031&gt;
+[pid 62843] open(&quot;/proc/336786/fd&quot;, O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 4 &lt;0.000020&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/0&quot;, &quot;/dev/null&quot;, 4096) = 9 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/0&quot;, O_RDONLY) = 7 &lt;0.000026&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/1&quot;, &quot;socket:[11416120]&quot;, 4096) = 17 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/1&quot;, O_RDONLY) = 7 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/net/ax25&quot;, O_RDONLY) = -1 ENOENT (No such file or directory) &lt;0.000028&gt;
+[pid 62843] open(&quot;/proc/net/ipx&quot;, O_RDONLY) = -1 ENOENT (No such file or directory) &lt;0.000025&gt;
+[pid 62843] open(&quot;/proc/net/raw&quot;, O_RDONLY) = 7 &lt;0.000029&gt;
+[pid 62843] open(&quot;/proc/net/netlink&quot;, O_RDONLY) = 7 &lt;0.000034&gt;
+[pid 62843] open(&quot;/proc/net/packet&quot;, O_RDONLY) = 7 &lt;0.000039&gt;
+[pid 62843] open(&quot;/proc/net/unix&quot;, O_RDONLY) = 7 &lt;0.000040&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/2&quot;, &quot;socket:[11416120]&quot;, 4096) = 17 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/2&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/3&quot;, &quot;socket:[11416034]&quot;, 4096) = 17 &lt;0.000041&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/3&quot;, O_RDONLY) = 7 &lt;0.000040&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/4&quot;, &quot;socket:[11416142]&quot;, 4096) = 17 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/4&quot;, O_RDONLY) = 7 &lt;0.000044&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/5&quot;, &quot;anon_inode:[eventpoll]&quot;, 4096) = 22 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/5&quot;, O_RDONLY) = 7 &lt;0.000024&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/6&quot;, &quot;socket:[11416150]&quot;, 4096) = 17 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/6&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/7&quot;, &quot;socket:[11416154]&quot;, 4096) = 17 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/7&quot;, O_RDONLY) = 7 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/net/raw6&quot;, O_RDONLY) = 7 &lt;0.000048&gt;
+[pid 62843] open(&quot;/proc/net/sockstat6&quot;, O_RDONLY) = 7 &lt;0.000031&gt;
+[pid 62843] open(&quot;/proc/net/tcp6&quot;, O_RDONLY) = 7 &lt;0.000058&gt;
+[pid 62843] open(&quot;/proc/net/udp6&quot;, O_RDONLY) = 7 &lt;0.000031&gt;
+[pid 62843] open(&quot;/proc/net/udplite6&quot;, O_RDONLY) = 7 &lt;0.000074&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/8&quot;, &quot;socket:[11416156]&quot;, 4096) = 17 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/8&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/9&quot;, &quot;socket:[11416158]&quot;, 4096) = 17 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/9&quot;, O_RDONLY) = 7 &lt;0.000024&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/10&quot;, &quot;socket:[11416161]&quot;, 4096) = 17 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/10&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/11&quot;, &quot;/var/lib/docker/volumes/metadata&quot;..., 4096) = 35 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/11&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/12&quot;, &quot;net:[4026531993]&quot;, 4096) = 16 &lt;0.000025&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/12&quot;, O_RDONLY) = 7 &lt;0.000021&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/14&quot;, &quot;socket:[11416447]&quot;, 4096) = 17 &lt;0.000019&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/14&quot;, O_RDONLY) = 7 &lt;0.000019&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/15&quot;, &quot;socket:[11416448]&quot;, 4096) = 17 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/15&quot;, O_RDONLY) = 7 &lt;0.000021&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/16&quot;, &quot;socket:[11416449]&quot;, 4096) = 17 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/16&quot;, O_RDONLY) = 7 &lt;0.000021&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/17&quot;, &quot;socket:[22060248]&quot;, 4096) = 17 &lt;0.000019&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/17&quot;, O_RDONLY) = 7 &lt;0.000076&gt;
+[pid 62843] open(&quot;/proc/net/sockstat&quot;, O_RDONLY) = 7 &lt;0.000027&gt;
+[pid 62843] open(&quot;/proc/net/tcp&quot;, O_RDONLY) = 7 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/net/udp&quot;, O_RDONLY) = 7 &lt;0.000031&gt;
+[pid 62843] open(&quot;/proc/net/udplite&quot;, O_RDONLY) = 7 &lt;0.000031&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/18&quot;, &quot;socket:[11416635]&quot;, 4096) = 17 &lt;0.000025&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/18&quot;, O_RDONLY) = 7 &lt;0.000018&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/19&quot;, &quot;socket:[11419108]&quot;, 4096) = 17 &lt;0.000020&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/19&quot;, O_RDONLY) = 7 &lt;0.000016&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/21&quot;, &quot;socket:[11417095]&quot;, 4096) = 17 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/21&quot;, O_RDONLY) = 7 &lt;0.000020&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/23&quot;, &quot;/run/docker/containerd/1ab95c268&quot;..., 4096) = 99 &lt;0.000026&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/23&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/24&quot;, &quot;/run/docker/containerd/1ab95c268&quot;..., 4096) = 99 &lt;0.000019&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/24&quot;, O_RDONLY) = 7 &lt;0.000017&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/25&quot;, &quot;/var/lib/docker/containers/1ab95&quot;..., 4096) = 165 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/25&quot;, O_RDONLY) = 7 &lt;0.000031&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/27&quot;, &quot;/run/docker/containerd/1ab95c268&quot;..., 4096) = 99 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/27&quot;, O_RDONLY) = 7 &lt;0.000145&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/28&quot;, &quot;/run/docker/containerd/1ab95c268&quot;..., 4096) = 99 &lt;0.000016&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/28&quot;, O_RDONLY) = 7 &lt;0.000024&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/29&quot;, &quot;/run/docker/containerd/4e830ec34&quot;..., 4096) = 99 &lt;0.000019&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/29&quot;, O_RDONLY) = 7 &lt;0.000017&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/30&quot;, &quot;/run/docker/containerd/4e830ec34&quot;..., 4096) = 99 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/30&quot;, O_RDONLY) = 7 &lt;0.000022&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/31&quot;, &quot;/run/docker/containerd/4e830ec34&quot;..., 4096) = 99 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/31&quot;, O_RDONLY) = 7 &lt;0.000074&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/32&quot;, &quot;/run/docker/containerd/4e830ec34&quot;..., 4096) = 99 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/32&quot;, O_RDONLY) = 7 &lt;0.000016&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/33&quot;, &quot;socket:[11592266]&quot;, 4096) = 17 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/33&quot;, O_RDONLY) = 7 &lt;0.000019&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/35&quot;, &quot;/run/docker/containerd/c1d804e86&quot;..., 4096) = 99 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/35&quot;, O_RDONLY) = 7 &lt;0.000021&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/36&quot;, &quot;/run/docker/containerd/c1d804e86&quot;..., 4096) = 99 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/36&quot;, O_RDONLY) = 7 &lt;0.000036&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/37&quot;, &quot;/var/lib/docker/containers/c1d80&quot;..., 4096) = 165 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/37&quot;, O_RDONLY) = 7 &lt;0.000017&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/38&quot;, &quot;socket:[11592271]&quot;, 4096) = 17 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/38&quot;, O_RDONLY) = 7 &lt;0.000021&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/40&quot;, &quot;socket:[22092554]&quot;, 4096) = 17 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/40&quot;, O_RDONLY) = 7 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/net/sctp/assocs&quot;, O_RDONLY) = -1 ENOENT (No such file or directory) &lt;0.000027&gt;
+[pid 62843] open(&quot;/proc/net/sctp/eps&quot;, O_RDONLY) = -1 ENOENT (No such file or directory) &lt;0.000016&gt;
+[pid 62843] open(&quot;/proc/net/icmp&quot;, O_RDONLY) = 7 &lt;0.000032&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/41&quot;, &quot;socket:[18538290]&quot;, 4096) = 17 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/41&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/42&quot;, &quot;socket:[22042621]&quot;, 4096) = 17 &lt;0.000019&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/42&quot;, O_RDONLY) = 7 &lt;0.000017&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/43&quot;, &quot;socket:[22018200]&quot;, 4096) = 17 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/43&quot;, O_RDONLY) = 7 &lt;0.000021&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/44&quot;, &quot;/run/docker/containerd/c1d804e86&quot;..., 4096) = 99 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/44&quot;, O_RDONLY) = 7 &lt;0.000031&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/45&quot;, &quot;/run/docker/containerd/c1d804e86&quot;..., 4096) = 99 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/45&quot;, O_RDONLY) = 7 &lt;0.000075&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/49&quot;, &quot;socket:[22063878]&quot;, 4096) = 17 &lt;0.000020&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/49&quot;, O_RDONLY) = 7 &lt;0.000044&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/51&quot;, &quot;socket:[15380937]&quot;, 4096) = 17 &lt;0.000016&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/51&quot;, O_RDONLY) = 7 &lt;0.000024&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/52&quot;, &quot;socket:[15378170]&quot;, 4096) = 17 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/52&quot;, O_RDONLY) = 7 &lt;0.000019&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/53&quot;, &quot;socket:[22092347]&quot;, 4096) = 17 &lt;0.000040&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/53&quot;, O_RDONLY) = 7 &lt;0.000017&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/54&quot;, &quot;/var/lib/docker/builder/fscache.&quot;..., 4096) = 34 &lt;0.000014&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/54&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/55&quot;, &quot;/var/lib/docker/buildkit/snapsho&quot;..., 4096) = 37 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/55&quot;, O_RDONLY) = 7 &lt;0.000018&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/56&quot;, &quot;/var/lib/docker/buildkit/metadat&quot;..., 4096) = 36 &lt;0.000039&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/56&quot;, O_RDONLY) = 7 &lt;0.000042&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/57&quot;, &quot;/var/lib/docker/buildkit/cache.d&quot;..., 4096) = 33 &lt;0.000017&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/57&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/60&quot;, &quot;socket:[12935500]&quot;, 4096) = 17 &lt;0.000029&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/60&quot;, O_RDONLY) = 7 &lt;0.000018&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/62&quot;, &quot;socket:[12922089]&quot;, 4096) = 17 &lt;0.000037&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/62&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/63&quot;, &quot;socket:[22060918]&quot;, 4096) = 17 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/63&quot;, O_RDONLY) = 7 &lt;0.000022&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/64&quot;, &quot;socket:[17500441]&quot;, 4096) = 17 &lt;0.000038&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/64&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/67&quot;, &quot;socket:[11418685]&quot;, 4096) = 17 &lt;0.000019&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/67&quot;, O_RDONLY) = 7 &lt;0.000025&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/71&quot;, &quot;socket:[15191170]&quot;, 4096) = 17 &lt;0.000019&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/71&quot;, O_RDONLY) = 7 &lt;0.000039&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/77&quot;, &quot;socket:[15193842]&quot;, 4096) = 17 &lt;0.000040&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/77&quot;, O_RDONLY) = 7 &lt;0.000019&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/79&quot;, &quot;socket:[19644209]&quot;, 4096) = 17 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/79&quot;, O_RDONLY) = 7 &lt;0.000018&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/81&quot;, &quot;socket:[20224123]&quot;, 4096) = 17 &lt;0.000024&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/81&quot;, O_RDONLY) = 7 &lt;0.000077&gt;
+[pid 62843] readlink(&quot;/proc/336786/fd/88&quot;, &quot;socket:[22005086]&quot;, 4096) = 17 &lt;0.000019&gt;
+[pid 62843] open(&quot;/proc/336786/fdinfo/88&quot;, O_RDONLY) = 7 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/336913/stat&quot;, O_RDONLY) = 4 &lt;0.000037&gt;
+[pid 62843] open(&quot;/proc/336925/stat&quot;, O_RDONLY) = 4 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/336955/stat&quot;, O_RDONLY) = 4 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/337075/stat&quot;, O_RDONLY) = 4 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/337098/stat&quot;, O_RDONLY) = 4 &lt;0.000016&gt;
+[pid 62843] open(&quot;/proc/337178/stat&quot;, O_RDONLY) = 4 &lt;0.000035&gt;
+[pid 62843] open(&quot;/proc/337375/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/337376/stat&quot;, O_RDONLY) = 4 &lt;0.000015&gt;
+[pid 62843] open(&quot;/proc/337377/stat&quot;, O_RDONLY) = 4 &lt;0.000040&gt;
+[pid 62843] open(&quot;/proc/337378/stat&quot;, O_RDONLY) = 4 &lt;0.000015&gt;
+[pid 62843] open(&quot;/proc/337380/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/337381/stat&quot;, O_RDONLY) = 4 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/337382/stat&quot;, O_RDONLY) = 4 &lt;0.000021&gt;
+[pid 62843] open(&quot;/proc/337383/stat&quot;, O_RDONLY) = 4 &lt;0.000023&gt;
+[pid 62843] open(&quot;/proc/337384/stat&quot;, O_RDONLY) = 4 &lt;0.000074&gt;
+[pid 62843] open(&quot;/proc/337385/stat&quot;, O_RDONLY) = 4 &lt;0.000018&gt;
+[pid 62843] open(&quot;/proc/337389/stat&quot;, O_RDONLY) = 4 &lt;0.000022&gt;
+[pid 62843] open(&quot;/proc/337390/stat&quot;, O_RDONLY) = 4 &lt;0.000014&gt;
+```
+
+所以可以猜测它的做法等价于
+
+```
+for i in $(ls -l /proc/336786/fd/ | awk -F: '/socket:/ {print $NF}'); do inode=${i:1:8}; peer_a=$(awk &quot;/$inode/ {print \$3}&quot; /proc/336786/net/tcp*); [[ -z $peer_a ]] &amp;&amp; continue; port=${peer_a#*:}; python2 -c &quot;print 0x$port&quot;; done
+```
+</pre>
+</div>
 <div author="zc" created="20200629165444549" creator="zc" modified="20200702013101915" modifier="zc" tags="transaction ddd design" title="2020-06-02 事务设计的思考">
 <pre>按照 DDD 的说法, 我们应该避免大事务, 而是采用小事务+最终一致性, 而这一切的源头需要说服用户采用最终一致性的“用户故事”; 反过来事务又决定了建模的设计, DDD 要求以事务划分聚合, 避免大聚合和避免大事务在这里是相通的. 你会发现(非侵入性的) DDD 的设计流程是: 建立用户故事 - 划分事务 - 设计聚合模型, 我之所以说是非入侵性是因为我没有提到“领域”这个难懂的概念, 而“领域”一般对应于“微服务”, “集成领域上下文“一般来说就是 remote API call, 我不提这些概念因为在讨论事务设计的本质的时候没有影响, 虽然在实现事务的时候远程调用与否会导致额外的心智负担去实现 “if - then - rollback&quot; 原子调用.
 
@@ -11485,11 +11783,6 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
 
 ---
 从来不读书, 不会写代码, 马上被开除.</pre>
-</div>
-<div created="20200702035535408" creator="zc" draft.of="New Tiddler" draft.title="2020-06-02 lsof 的本质" modified="20200702035938049" modifier="zc" tags="linux shell lsof tools" title="Draft of 'New Tiddler' by zc">
-<pre>## TL;DR
-
-</pre>
 </div>
 
 
