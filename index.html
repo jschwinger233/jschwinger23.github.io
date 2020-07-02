@@ -429,7 +429,7 @@ Error message and password prompt
 
 <li>2020-06-02 事务设计的思考</li>
 
-<li>about</li>
+<li>zc</li>
 
 </ul>
 </p>
@@ -10277,8 +10277,8 @@ Error message and password prompt
 <div created="20200702040001669" creator="zc" modified="20200702040001669" modifier="zc" title="$:/state/dropdown/keyboardshortcut/new-tiddler-286565879">
 <pre>open</pre>
 </div>
-<div created="20200629165501323" creator="zc" modified="20200702053603857" modifier="zc" title="$:/state/showeditpreview">
-<pre>yes</pre>
+<div created="20200629165501323" creator="zc" modified="20200701175734306" modifier="zc" title="$:/state/showeditpreview">
+<pre>no</pre>
 </div>
 <div created="20200629165649477" creator="zc" modified="20200629165649477" modifier="zc" title="$:/state/tab--1498284803">
 <pre>$:/core/ui/AdvancedSearch/Standard</pre>
@@ -10313,7 +10313,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div created="20200702035945377" creator="zc" list="[[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] about" modified="20200702035945377" modifier="zc" title="$:/StoryList">
+<div created="20200702053817096" creator="zc" list="[[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" modified="20200702053817096" modifier="zc" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -11481,12 +11481,12 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
     }
 }</pre>
 </div>
-<div created="20200702035535408" creator="zc" modified="20200702053701669" modifier="zc" tags="linux shell lsof tools" title="2020-06-02 lsof 的本质">
-<pre>!! TL;DR
+<div created="20200702035535408" creator="zc" modified="20200702053552049" modifier="zc" tags="linux shell lsof tools" title="2020-06-02 lsof 的本质">
+<pre>## TL;DR
 
 `lsof -p` 通过遍历 `/proc/$PID/fd/`, 先获得 inode no, 再通过 `/proc/$PID/net/tcp{,6}` 得到端口等信息.
 
-!! Discussion 
+## discussion 
 
 比方说我们要在程序里去获得 `lsof -p$PID | grep $PORT` 的结果, 利用 fork + execvp 显然是行为艺术了, 所以大家开始研究 lsof 的实现.
 
@@ -11778,7 +11778,7 @@ for i in $(ls -l /proc/336786/fd/ | awk -F: '/socket:/ {print $NF}'); do inode=$
 
 不过有一种简单的简化, 我们不用最终一致性, 而是只采用小事务+幂等性+有限状态机, 把一个大事务分拆成为多阶段多状态, 设计有限状态机, 那么一个请求就算失败也只可能在这几个阶段其中之一, 同时仔细设计幂等接口可以轻易通过重发请求进行补偿. 这么实现的一大好处是没有最终一致性的庞大的基础设施的要求, 同时我们有小事务, 代码好写, 异常情况下好 debug. 考虑一个大事务在失败的情况下回滚操作把一切都删得干干净净, 万一日志里的信息不足以判断异常就十分尴尬, 小事务多状态模型就好办得多.</pre>
 </div>
-<div author="zc" created="20200629171019808" creator="zc" modified="20200701180512653" modifier="zc" tags="about zc" title="about">
+<div author="zc" created="20200629171019808" creator="zc" modified="20200702053827931" modifier="zc" tags="about zc" title="zc">
 <pre>第二故乡是卢旺达, 目前在新加坡工作.
 
 ---
