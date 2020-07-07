@@ -445,7 +445,7 @@ Error message and password prompt
 
 <li>2020-06-04 etcd</li>
 
-<li>2020-07-07 gdb 调试 go</li>
+<li>2020-07-07 GDB attach Go process</li>
 
 <li>zc</li>
 
@@ -10340,7 +10340,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div list="[[2020-07-07 gdb 调试 go]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
+<div list="[[2020-07-07 GDB attach Go process]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -11357,8 +11357,8 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
 <div created="20200629100810293" creator="zc" modified="20200629173442937" modifier="zc" title="$:/temp/RemoteAssetSearch/$:/config/OfficialPluginLibrary">
 <pre></pre>
 </div>
-<div created="20200629165437308" creator="zc" modified="20200629165759988" modifier="zc" title="$:/temp/search">
-<pre>control</pre>
+<div created="20200629165437308" creator="zc" modified="20200707075913107" modifier="zc" title="$:/temp/search">
+<pre>符号表</pre>
 </div>
 <div created="20200629173444875" creator="zc" modified="20200629173444875" modifier="zc" tags="$:/tags/ServerConnection" title="$:/temp/ServerConnection/https://tiddlywiki.com/library/v5.1.22/index.html" url="https://tiddlywiki.com/library/v5.1.22/index.html">
 <pre>loaded</pre>
@@ -11941,7 +11941,7 @@ err := Execute(ctx, ttl, deployCmd, createMetaCmd)
 docker run -d -p 2379:2379 --name etcd  quay.io/coreos/etcd:v3.4.9 /usr/local/bin/etcd --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://0.0.0.0:2379
 ```</pre>
 </div>
-<div created="20200707071226633" creator="zc" modified="20200707075557328" modifier="zc" tags="go eru gdb debug" title="2020-07-07 gdb 调试 go">
+<div created="20200707071226633" creator="zc" modified="20200707080511578" modifier="zc" tags="go eru gdb debug" title="2020-07-07 GDB attach Go process">
 <pre>好的我知道官方都推荐使用 delve 调试, 但是 gdb 有额外的好处. 
 
 如果只是调试自己的应用是最简单的, 只需要保证 “完全一致”.
