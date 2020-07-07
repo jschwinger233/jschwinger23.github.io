@@ -445,6 +445,8 @@ Error message and password prompt
 
 <li>2020-06-04 etcd</li>
 
+<li>2020-07-07 gdb 调试 go</li>
+
 <li>zc</li>
 
 </ul>
@@ -10299,7 +10301,7 @@ Error message and password prompt
 <div created="20200702062430854" creator="zc" modified="20200702062430854" modifier="zc" title="$:/state/image-picker/system--1555866629">
 <pre>show</pre>
 </div>
-<div created="20200629165501323" creator="zc" modified="20200702171234152" modifier="zc" title="$:/state/showeditpreview">
+<div created="20200629165501323" creator="zc" modified="20200707075522575" modifier="zc" title="$:/state/showeditpreview">
 <pre>yes</pre>
 </div>
 <div created="20200629165649477" creator="zc" modified="20200629165649477" modifier="zc" title="$:/state/tab--1498284803">
@@ -10338,7 +10340,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div list="[[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
+<div list="[[2020-07-07 gdb 调试 go]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -11938,6 +11940,53 @@ err := Execute(ctx, ttl, deployCmd, createMetaCmd)
 ```
 docker run -d -p 2379:2379 --name etcd  quay.io/coreos/etcd:v3.4.9 /usr/local/bin/etcd --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://0.0.0.0:2379
 ```</pre>
+</div>
+<div created="20200707071226633" creator="zc" modified="20200707075557328" modifier="zc" tags="go eru gdb debug" title="2020-07-07 gdb 调试 go">
+<pre>好的我知道官方都推荐使用 delve 调试, 但是 gdb 有额外的好处. 
+
+如果只是调试自己的应用是最简单的, 只需要保证 “完全一致”.
+
+比如对于 eru-core:
+
+# 确定线上运行的版本, 需要确定到 git revision
+# 找到那次发布, 确定编译时镜像, 确定到 image id
+# 直接从 github 下载那个版本的代码, 使用 zip download
+# 在相同机器上运行 `docker run -td --name debug --net host --privileged -v $PATH_TO_REPO:/go/src/github.com/projecteru2/core -v /etc/eru:/etc/eru --pid container:eru_core-$HOSTNAME $IMAGE sh`
+# 容器内 `apk add --no-cache git curl make gcc libc-dev gdb`
+# 容器内 `go build -a -tags &quot;netgo osusergo&quot; -installsuffix netgo -o sym`
+# 容器内 `gdb -p1`, 然后 `file sym`
+# 然后正常使用 gdb
+
+里面有几个要点:
+
+# 我说的''完全一致'', 就是完完全全的一致, 从一开始确定代码版本(#1), 到运行镜像(#2), 到镜像内代码的路径(#4), 到容器内动态库版本(#5), 到编译参数(#6), 一个都不能含糊
+# attach pid 和 net ns 是很常用的操作, `docker run` 有三个 ns 可以直接 attach 一个容器: pid, ipc, net
+# privileged 才能运行 gdb
+# 编译参数唯一和生产环境不同之处是删掉了 `-s`, which strips symbol table
+# `gdb -p` attach a process, and `file` loads a file to extract symbol table
+
+这套流程可以用来 debug etcd, 但是对于 dockerd 和 containerd 则不行:
+
+# dockerd 可以在本地编译:
+## checkout 到版本
+## `make deb`
+## 然后观察输出, 在完成 dockerd 编译后使用 `docker cp` 拷贝出来
+## 尝试过删除 `-s` / `-w`, 添加 `-compressdwarf=false`, 都不行
+## 本质上 dockerd 是有符号表, 但是似乎是 debug frame 空了, 理论上应该是删除 `-w` 就能解决, 但是不行
+#  containerd
+## `make` 就能编译
+## 但是不能编译出相同的文件, 缺少参数, 需要进一步了解 containerd 发布流程, 比如在什么镜像里构建, 才能完全复制
+# etcd 
+## 直接 `make build` 就可以了, 出来的文件就有符号表
+## 需要使用 gvm 控制 go 版本
+
+一些其他知识:
+
+# 使用  moovweb/gvm 进行 go 版本控制
+## `gvm install go1.12.13`
+## `gvm use go1.12.13`
+# 使用 `go tool nm` 检查二进制文件符号表
+# 使用 `objdump -W | grep .debug_` 检查二进制文件 debug frame</pre>
 </div>
 <div author="zc" created="20200629171019808" creator="zc" modified="20200702100127090" modifier="zc" tags="about zc" title="zc">
 <pre>第二故乡是卢旺达, 目前在新加坡工作.
