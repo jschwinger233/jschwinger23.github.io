@@ -447,6 +447,8 @@ Error message and password prompt
 
 <li>2020-07-07 GDB attach Go process</li>
 
+<li>2020-07-10 Goroutine Pitfalls</li>
+
 <li>zc</li>
 
 </ul>
@@ -10340,7 +10342,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div list="[[2020-07-07 GDB attach Go process]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
+<div list="[[2020-07-10 Goroutine Pitfalls]] [[2020-07-07 GDB attach Go process]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -10404,7 +10406,7 @@ Error message and password prompt
     }
 }</pre>
 </div>
-<div created="20200629165545746" creator="zc" modified="20200702175523584" modifier="zc" title="$:/temp/NewTagName">
+<div created="20200629165545746" creator="zc" modified="20200709174656757" modifier="zc" title="$:/temp/NewTagName">
 <pre></pre>
 </div>
 <div author="Paco Rivière" core-version="&gt;=5.0.0" created="20200629100806787" creator="zc" dependents="" description="Catalan (Spain)" icon="data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22810%22%20height%3D%22540%22%3E%0A%3Crect%20width%3D%22810%22%20height%3D%22540%22%20fill%3D%22%23FCDD09%22%2F%3E%0A%3Cpath%20stroke%3D%22%23DA121A%22%20stroke-width%3D%2260%22%20d%3D%22M0%2C90H810m0%2C120H0m0%2C120H810m0%2C120H0%22%2F%3E%0A%3C%2Fsvg%3E" modified="20200629100806787" modifier="zc" name="ca-ES" original-plugin-type="language" original-tags="" original-title="$:/languages/ca-ES" original-type="application/json" requires-reload="no" server-url="https://tiddlywiki.com/library/v5.1.22/index.html" tags="$:/tags/RemoteAssetInfo" title="$:/temp/RemoteAssetInfo/https://tiddlywiki.com/library/v5.1.22/index.html/$:/languages/ca-ES" type="text/vnd.tiddlywiki" version="5.1.22">
@@ -11987,6 +11989,93 @@ docker run -d -p 2379:2379 --name etcd  quay.io/coreos/etcd:v3.4.9 /usr/local/bi
 ## `gvm use go1.12.13`
 # 使用 `go tool nm` 检查二进制文件符号表
 # 使用 `objdump -W | grep .debug_` 检查二进制文件 debug frame</pre>
+</div>
+<div created="20200709173839500" creator="zc" modified="20200709182030469" modifier="zc" tags="go debug" title="2020-07-10 Goroutine Pitfalls">
+<pre>!!1. goroutine 泄漏
+一般来说 goroutine 泄漏很好处理, 只要 select `&lt;-ctx.Done()` 就行.
+同时我们可以通过 pprof 来获取当前 goroutine; 就算进程没有开启 pprof, 也可以通过 gdb + runtime-gdb.py 来 `info goroutine`; 参考 [[2020-07-07 GDB attach Go process]].
+
+!!2. `defer cancel()`
+大家都太习惯于
+
+```
+ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+defer cancel()
+```
+这样的代码, 却忽略了一点: 退出当前函数、执行 defer 的时候, 可能有 goroutine 依然在使用 ctx:
+
+```
+func Run() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	return run(ctx)
+}
+
+func run(ctx context.Context) error {
+	go func() {
+		asyncJob(ctx)
+	}()
+	return nil
+}
+```
+当 Run 函数返回的时候, 内部创建的 aysncJob 依然在运行, 然而 ctx 被 cancel 导致移步任务直接结束.
+
+为了避免这种问题, 我们应该严格养成好习惯: 创建 goroutine 必须返回 done channel
+
+```
+func run(ctx context.Context) (done chan struct{}) {
+	done := make(chan struct{})
+	go func() {
+		defer func() {
+			done &lt;- struct{}{}
+		}()
+		asyncJob(ctx)
+	}
+	return done
+}
+```
+如果 done channel 承载了数据那就更好了.
+
+这时候上层应该 select done channle 来 cancel:
+
+```
+func Run() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	&lt;-run()
+}
+```
+
+这也导致在 Go 里实现框架级、非侵入性的工具特别令人难过: 实现一个 decorator 让被装饰的函数输入的 ctx 都加上 global timeout.
+
+!!3. race condition
+有一种情况的 race condition 容易被忽略: builtin 引用类型.
+
+比如一个 option 这样定义:
+
+```
+type Options struct {
+	data map[string]io.Reader
+}
+```
+如果你传入一个 Options 指针给不同的 goroutine, 那么所有的 goroutine 将读取相同的 io.Reader, 这多半不是我想要的.
+
+map, interface, slice, 是 go 默认的引用类型, 所以我看到 *map 这种代码就生气.
+
+不过要是从软件工程方法论来讲, 什么时候用指针, 什么时候用值, 是根据建模需求来决定的: [值对象](https://en.wikipedia.org/wiki/Value_object)
+
+在值对象的 immutable 要求下, 我们会发现在 Options 里存放可变的 io.Reader 可能不是好主意, 恐怕进行进一步的建模更好:
+
+```
+type Options struct {
+	dataManager DataManager
+}
+
+type DataManager interface {
+	GetReader() io.Reader
+}
+```
+这时候 io.Reader 被封装在接口内部, mutex 等实现细节也以高内聚的形式放到了正确的位置.</pre>
 </div>
 <div author="zc" created="20200629171019808" creator="zc" modified="20200702100127090" modifier="zc" tags="about zc" title="zc">
 <pre>第二故乡是卢旺达, 目前在新加坡工作.
