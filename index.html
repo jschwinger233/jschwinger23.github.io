@@ -451,6 +451,8 @@ Error message and password prompt
 
 <li>2020-07-10 neovim</li>
 
+<li>2020-07-12 gRPC 抓包</li>
+
 <li>zc</li>
 
 </ul>
@@ -10344,7 +10346,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div list="[[2020-07-10 neovim]] [[2020-07-10 Goroutine Pitfalls]] [[2020-07-07 GDB attach Go process]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
+<div list="[[2020-07-12 gRPC 抓包]] [[2020-07-10 neovim]] [[2020-07-10 Goroutine Pitfalls]] [[2020-07-07 GDB attach Go process]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -11361,8 +11363,8 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
 <div created="20200629100810293" creator="zc" modified="20200629173442937" modifier="zc" title="$:/temp/RemoteAssetSearch/$:/config/OfficialPluginLibrary">
 <pre></pre>
 </div>
-<div created="20200629165437308" creator="zc" modified="20200707075913107" modifier="zc" title="$:/temp/search">
-<pre>符号表</pre>
+<div created="20200629165437308" creator="zc" modified="20200712142042695" modifier="zc" title="$:/temp/search">
+<pre>J</pre>
 </div>
 <div created="20200629173444875" creator="zc" modified="20200629173444875" modifier="zc" tags="$:/tags/ServerConnection" title="$:/temp/ServerConnection/https://tiddlywiki.com/library/v5.1.22/index.html" url="https://tiddlywiki.com/library/v5.1.22/index.html">
 <pre>loaded</pre>
@@ -12105,6 +12107,30 @@ https://neovim.io/doc/user/motion.html#jumplist
 # 配置 jumpstack `if has('nvim') se jop=stack endif`
 
 注意截至到 2020-07-08, neovim release 0.4.3 并没有 jumpstack 功能, 所以要安装 head.</pre>
+</div>
+<div created="20200712142404714" creator="zc" modified="20200712143836705" modifier="zc" tags="grpc network tshark wireshark" title="2020-07-12 gRPC 抓包">
+<pre>搜到一个仓库 https://github.com/rmedvedev/grpcdump, 试了一下不能输出具体的请求和响应内容, 提了一个 issue https://github.com/rmedvedev/grpcdump/issues/4.
+
+然后转向了 tshark, 在 wireshark for mac 界面上点了半个多小时(可能还不止)终于搞清楚了.
+
+# preference
+## protocol-&gt;grpc, 勾选所有框框
+## advance, 搜索 protobuf
+### protobuf.bytes_as_string 什么的全部 True
+### protobuf.search_paths 指定 proto 文件路径, 勾选 loads all files
+# `tcpdump -w a.pcap` 抓包
+# 载入 pcap 文件
+# 右键一个包, `Decode As`, Current 列选 HTTP2
+# 可以了!
+
+搞清楚要点是 decode 选项之后 tshark 也明确了, 比方我们要抓 5001 端口的 grpc 流量:
+
+# 配置文件在 `~/.config/wireshark/`
+# `tshark -i lo -f 'tcp port 5001' -d tcp.port==5001,http2 -V`
+
+不过要在 Linux 上安装的话简直要死, 来 install from package 只提供古代版本, build from source 简直要把内核装坏的样子, 我尝试在 alpine Linux 里构建 tshark 3.0+ 镜像也输了, 安装一堆 qt 是什么鬼啊.
+
+所以就在远程 tcpdump -w 然后 sz 到本地用 wireshark 查看吧, 不影响生产效率.</pre>
 </div>
 <div author="zc" created="20200629171019808" creator="zc" modified="20200702100127090" modifier="zc" tags="about zc" title="zc">
 <pre>第二故乡是卢旺达, 目前在新加坡工作.
