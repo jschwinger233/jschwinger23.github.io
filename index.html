@@ -453,6 +453,8 @@ Error message and password prompt
 
 <li>2020-07-12 gRPC 抓包</li>
 
+<li>2020-07-13 How Dockerd works with Libnetwork</li>
+
 <li>zc</li>
 
 </ul>
@@ -10346,7 +10348,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div list="[[2020-07-12 gRPC 抓包]] [[2020-07-10 neovim]] [[2020-07-10 Goroutine Pitfalls]] [[2020-07-07 GDB attach Go process]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
+<div list="[[2020-07-13 How Dockerd works with Libnetwork]] [[2020-07-12 gRPC 抓包]] [[2020-07-10 neovim]] [[2020-07-10 Goroutine Pitfalls]] [[2020-07-07 GDB attach Go process]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -12131,6 +12133,188 @@ https://neovim.io/doc/user/motion.html#jumplist
 不过要在 Linux 上安装的话简直要死, 来 install from package 只提供古代版本, build from source 简直要把内核装坏的样子, 我尝试在 alpine Linux 里构建 tshark 3.0+ 镜像也输了, 安装一堆 qt 是什么鬼啊.
 
 所以就在远程 tcpdump -w 然后 sz 到本地用 wireshark 查看吧, 不影响生产效率.</pre>
+</div>
+<div created="20200713142209604" creator="zc" modified="20200713152052411" modifier="zc" tags="docker debug libnetwork cnm" title="2020-07-13 How Dockerd works with Libnetwork">
+<pre>方法:
+
+# 在 docker-ce/components/engine 下 make shell
+# `go get github.com/go-delve/delve/cmd/dlv`
+# `dlv debug github.com/docker/docker/cmd/dockerd`
+# 善用 `bt` 代替肉眼追溯调用栈
+
+结论:
+
+!!! CNM 四大方法: 
+
+`driver.CreateNetwork`, 由 `docker network create --driver --ipam --subnet` 触发
+
+`ipam.RequestAddress`, 在 `docker start` 时候触发, 调用栈为 
+
+```
+ 0  0x00000000024aa56b in github.com/docker/docker/vendor/github.com/docker/libnetwork/ipam.(*Allocator).RequestAddress
+    at ./vendor/github.com/docker/libnetwork/ipam/allocator.go:451
+ 1  0x0000000002583aac in github.com/docker/docker/vendor/github.com/docker/libnetwork.(*network).ipamAllocateVersion
+    at ./vendor/github.com/docker/libnetwork/network.go:1662
+ 2  0x0000000002582464 in github.com/docker/docker/vendor/github.com/docker/libnetwork.(*network).ipamAllocate
+    at ./vendor/github.com/docker/libnetwork/network.go:1542
+ 3  0x000000000254f933 in github.com/docker/docker/vendor/github.com/docker/libnetwork.(*controller).reservePools
+    at ./vendor/github.com/docker/libnetwork/controller.go:967
+ 4  0x00000000025488a5 in github.com/docker/docker/vendor/github.com/docker/libnetwork.New
+    at ./vendor/github.com/docker/libnetwork/controller.go:244
+ 5  0x0000000002e21511 in github.com/docker/docker/daemon.(*Daemon).initNetworkController
+    at ./daemon/daemon_unix.go:859
+ 6  0x0000000002e09e78 in github.com/docker/docker/daemon.(*Daemon).restore
+    at ./daemon/daemon.go:459
+ 7  0x0000000002e0ffeb in github.com/docker/docker/daemon.NewDaemon
+    at ./daemon/daemon.go:1067
+ 8  0x000000000344ce6a in main.(*DaemonCli).start
+    at ./cmd/dockerd/daemon.go:199
+ 9  0x0000000003455c06 in main.runDaemon
+    at ./cmd/dockerd/docker_unix.go:13
+10  0x00000000034573d4 in main.newDaemonCommand.func1
+    at ./cmd/dockerd/docker.go:34
+11  0x000000000343c971 in github.com/docker/docker/vendor/github.com/spf13/cobra.(*Command).execute
+    at ./vendor/github.com/spf13/cobra/command.go:762
+12  0x000000000343d5a8 in github.com/docker/docker/vendor/github.com/spf13/cobra.(*Command).ExecuteC
+    at ./vendor/github.com/spf13/cobra/command.go:852
+13  0x000000000343ceeb in github.com/docker/docker/vendor/github.com/spf13/cobra.(*Command).Execute
+    at ./vendor/github.com/spf13/cobra/command.go:800
+14  0x0000000003455b39 in main.main
+    at ./cmd/dockerd/docker.go:97
+15  0x000000000115ae54 in runtime.main
+    at /usr/local/go/src/runtime/proc.go:203
+16  0x000000000118c5f1 in runtime.goexit
+    at /usr/local/go/src/runtime/asm_amd64.s:1357
+```
+
+`driver.CreateEndpoint` 在 `docker start` 触发, 调用栈为 
+
+```
+0  0x000000000247a0fb in github.com/docker/docker/vendor/github.com/docker/libnetwork/drivers/bridge.(*driver).CreateEndpoint
+    at ./vendor/github.com/docker/libnetwork/drivers/bridge/bridge.go:878
+ 1  0x000000000257cd80 in github.com/docker/docker/vendor/github.com/docker/libnetwork.(*network).addEndpoint
+    at ./vendor/github.com/docker/libnetwork/network.go:1142
+ 2  0x000000000257e23f in github.com/docker/docker/vendor/github.com/docker/libnetwork.(*network).createEndpoint
+    at ./vendor/github.com/docker/libnetwork/network.go:1227
+ 3  0x000000000257d2fe in github.com/docker/docker/vendor/github.com/docker/libnetwork.(*network).CreateEndpoint
+    at ./vendor/github.com/docker/libnetwork/network.go:1168
+ 4  0x0000000002df94d3 in github.com/docker/docker/daemon.(*Daemon).connectToNetwork
+    at ./daemon/container_operations.go:753
+ 5  0x0000000002df7466 in github.com/docker/docker/daemon.(*Daemon).allocateNetwork
+    at ./daemon/container_operations.go:543
+ 6  0x0000000002dfc2e9 in github.com/docker/docker/daemon.(*Daemon).initializeNetworking
+    at ./daemon/container_operations.go:957
+ 7  0x0000000002e78abc in github.com/docker/docker/daemon.(*Daemon).containerStart
+    at ./daemon/start.go:150
+ 8  0x0000000002e786ae in github.com/docker/docker/daemon.(*Daemon).ContainerStart
+    at ./daemon/start.go:95
+ 9  0x00000000031a7b3e in github.com/docker/docker/api/server/router/container.(*containerRouter).postContainersStart
+    at ./api/server/router/container/container_routes.go:203
+10  0x00000000031b1596 in github.com/docker/docker/api/server/router/container.(*containerRouter).postContainersStart-fm
+    at ./api/server/router/container/container_routes.go:170
+11  0x0000000002eb6836 in github.com/docker/docker/api/server/middleware.ExperimentalMiddleware.WrapHandler.func1
+    at ./api/server/middleware/experimental.go:26
+12  0x0000000002eb6e2e in github.com/docker/docker/api/server/middleware.VersionMiddleware.WrapHandler.func1
+    at ./api/server/middleware/version.go:62
+13  0x000000000281b13a in github.com/docker/docker/pkg/authorization.(*Middleware).WrapHandler.func1
+    at ./pkg/authorization/middleware.go:59
+14  0x0000000002ebe7a6 in github.com/docker/docker/api/server.(*Server).makeHTTPHandler.func1
+    at ./api/server/server.go:142
+15  0x00000000015f4db4 in net/http.HandlerFunc.ServeHTTP
+    at /usr/local/go/src/net/http/server.go:2007
+16  0x000000000281f659 in github.com/docker/docker/vendor/github.com/gorilla/mux.(*Router).ServeHTTP
+    at ./vendor/github.com/gorilla/mux/mux.go:212
+17  0x0000000002ebc8e3 in github.com/docker/docker/api/server.(*routerSwapper).ServeHTTP
+    at ./api/server/router_swapper.go:29
+18  0x00000000015f97af in net/http.serverHandler.ServeHTTP
+    at /usr/local/go/src/net/http/server.go:2802
+19  0x00000000015f3d56 in net/http.(*conn).serve
+    at /usr/local/go/src/net/http/server.go:1890
+20  0x000000000118c5f1 in runtime.goexit
+    at /usr/local/go/src/runtime/asm_amd64.s:1357
+```
+`driver.Join` 在 `docker start` 触发, 调用栈为
+
+```
+ 0  0x000000000255c6d8 in github.com/docker/docker/vendor/github.com/docker/libnetwork.(*endpoint).Join
+    at ./vendor/github.com/docker/libnetwork/endpoint.go:429
+ 1  0x0000000002df9a70 in github.com/docker/docker/daemon.(*Daemon).connectToNetwork
+    at ./daemon/container_operations.go:794
+ 2  0x0000000002df7466 in github.com/docker/docker/daemon.(*Daemon).allocateNetwork
+    at ./daemon/container_operations.go:543
+ 3  0x0000000002dfc2e9 in github.com/docker/docker/daemon.(*Daemon).initializeNetworking
+    at ./daemon/container_operations.go:957
+ 4  0x0000000002e78abc in github.com/docker/docker/daemon.(*Daemon).containerStart
+    at ./daemon/start.go:150
+ 5  0x0000000002e786ae in github.com/docker/docker/daemon.(*Daemon).ContainerStart
+    at ./daemon/start.go:95
+ 6  0x00000000031a7b3e in github.com/docker/docker/api/server/router/container.(*containerRouter).postContainersStart
+    at ./api/server/router/container/container_routes.go:203
+ 7  0x00000000031b1596 in github.com/docker/docker/api/server/router/container.(*containerRouter).postContainersStart-fm
+    at ./api/server/router/container/container_routes.go:170
+ 8  0x0000000002eb6836 in github.com/docker/docker/api/server/middleware.ExperimentalMiddleware.WrapHandler.func1
+    at ./api/server/middleware/experimental.go:26
+ 9  0x0000000002eb6e2e in github.com/docker/docker/api/server/middleware.VersionMiddleware.WrapHandler.func1
+    at ./api/server/middleware/version.go:62
+10  0x000000000281b13a in github.com/docker/docker/pkg/authorization.(*Middleware).WrapHandler.func1
+    at ./pkg/authorization/middleware.go:59
+11  0x0000000002ebe7a6 in github.com/docker/docker/api/server.(*Server).makeHTTPHandler.func1
+    at ./api/server/server.go:142
+12  0x00000000015f4db4 in net/http.HandlerFunc.ServeHTTP
+    at /usr/local/go/src/net/http/server.go:2007
+13  0x000000000281f659 in github.com/docker/docker/vendor/github.com/gorilla/mux.(*Router).ServeHTTP
+    at ./vendor/github.com/gorilla/mux/mux.go:212
+14  0x0000000002ebc8e3 in github.com/docker/docker/api/server.(*routerSwapper).ServeHTTP
+    at ./api/server/router_swapper.go:29
+15  0x00000000015f97af in net/http.serverHandler.ServeHTTP
+    at /usr/local/go/src/net/http/server.go:2802
+16  0x00000000015f3d56 in net/http.(*conn).serve
+    at /usr/local/go/src/net/http/server.go:1890
+17  0x000000000118c5f1 in runtime.goexit
+    at /usr/local/go/src/runtime/asm_amd64.s:1357
+```
+
+!!! 讨论
+
+ipam.RequestAddress 是在 createEndpoint 流程里先调用的, 然后马上 driver.CreateEndpoint, 然后存储下来 (etcd / `/var/lib/docker/network/files/local-kv.db`).
+
+CreateEndpoint 接受 network, ep, ip[, mac, ifname]; bridge driver 的实现是在这里生成 ifname, 创建 veth, master 到 bridge; 而 calico driver 实现是生成 ifname, 创建 wep.
+
+Join 接受 network, ep, sandbox key; bridge 在这里设置 gateway; calico 在这里创建 veth, route. Join 会把路由返回给 dockerd.
+
+有趣的一点是 CNM 的所有调用都在 containerd 之前就全部完成, 而这时候连 netns 都没创建, 所以相当关键的一步是 runc prestart hook:
+
+```
+&quot;Hooks&quot;: {
+            &quot;poststart&quot;: null,
+            &quot;poststop&quot;: null,
+            &quot;prestart&quot;: [
+                {
+                    &quot;args&quot;: [
+                        &quot;libnetwork-setkey&quot;,
+                        &quot;-exec-root=/var/run/docker&quot;,
+                        &quot;bd7eaf7e65d5f3b0deb808c05935a1a659f0d7cdfd865739aeaa54a7e37d72f3&quot;,
+                        &quot;a2c2c307e787&quot;
+                    ],
+                    &quot;dir&quot;: &quot;&quot;,
+                    &quot;env&quot;: null,
+                    &quot;path&quot;: &quot;/proc/15057/exe&quot;,
+                    &quot;timeout&quot;: null
+                }
+            ]
+        }
+```
+
+两个 arguments 第一个是 container id 第二个是 controller id, 请求发送给 `/run/docker/libnetwork/$controller_id.sock`, 由 dockerd 监听, 最后调用 `sandbox.SetKey(basePath string)` 完成:
+
+# mount netns 到 `/var/run/docker/netns/$container_id`
+# 塞入 veth, 配置 ip, mac
+# 配置 route, gateway
+# iptables
+
+由此网络配置全部完成.
+
+</pre>
 </div>
 <div author="zc" created="20200629171019808" creator="zc" modified="20200702100127090" modifier="zc" tags="about zc" title="zc">
 <pre>第二故乡是卢旺达, 目前在新加坡工作.
