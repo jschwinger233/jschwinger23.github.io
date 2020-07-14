@@ -183,6 +183,8 @@ Error message and password prompt
 
 <li>$:/state/showeditpreview</li>
 
+<li>$:/state/sidebar</li>
+
 <li>$:/state/tab--1498284803</li>
 
 <li>$:/state/tab--1963855381</li>
@@ -454,6 +456,8 @@ Error message and password prompt
 <li>2020-07-12 gRPC 抓包</li>
 
 <li>2020-07-13 How Dockerd works with Libnetwork</li>
+
+<li>2020-07-14 Docker endpoints starting with ep-</li>
 
 <li>zc</li>
 
@@ -10312,6 +10316,9 @@ Error message and password prompt
 <div created="20200629165501323" creator="zc" modified="20200707075522575" modifier="zc" title="$:/state/showeditpreview">
 <pre>yes</pre>
 </div>
+<div created="20200713152151008" creator="zc" modified="20200713152157575" modifier="zc" title="$:/state/sidebar">
+<pre>yes</pre>
+</div>
 <div created="20200629165649477" creator="zc" modified="20200629165649477" modifier="zc" title="$:/state/tab--1498284803">
 <pre>$:/core/ui/AdvancedSearch/Standard</pre>
 </div>
@@ -10348,7 +10355,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div list="[[2020-07-13 How Dockerd works with Libnetwork]] [[2020-07-12 gRPC 抓包]] [[2020-07-10 neovim]] [[2020-07-10 Goroutine Pitfalls]] [[2020-07-07 GDB attach Go process]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
+<div list="[[2020-07-14 Docker endpoints starting with ep-]] [[2020-07-13 How Dockerd works with Libnetwork]] [[2020-07-12 gRPC 抓包]] [[2020-07-10 neovim]] [[2020-07-10 Goroutine Pitfalls]] [[2020-07-07 GDB attach Go process]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -12315,6 +12322,24 @@ Join 接受 network, ep, sandbox key; bridge 在这里设置 gateway; calico 在
 由此网络配置全部完成.
 
 </pre>
+</div>
+<div created="20200714032658862" creator="zc" modified="20200714034140603" modifier="zc" tags="docker libnetwork debug" title="2020-07-14 Docker endpoints starting with ep-">
+<pre>`docker network inspect` 经常会发现一些 ep id 是 `ep-xxxx` 而不是容器, 然而记录的 ep info 都是准确的, 那么这种 ep 是怎么产生的呢.
+
+!!! TL;DR
+
+在单机 docker 下不可能出现, 在 cluster-store 配置 etcd 时, ep- 代表运行在其他 host 的容器的 ep.
+
+!!! Steps
+
+# 在远程机器上 curl -OL 对应版本的 docker-ce
+# `make shell` 构建 docker-dev 镜像
+# 退出, 把 make shell 的 docker run 命令加上 --net host 手动运行
+# 把 `/etc/docker/daemon.json` 搞进去, 但是改改监听端口
+# 找 `ep-` 是在哪里的代码, 断点打上
+# step in 看到是由于遍历 ep 的时候需要从内存里的 sandbox map 里取 info, 得到的话就用 info 记录的 container id, 否则用 `ep-$EPID`
+# 找 sandbox map 在哪里被更新的, 发现是在 NewSandbox
+# 推测这是完全的内存数据结构, 所以对于不同节点容器就会显示 ep-</pre>
 </div>
 <div author="zc" created="20200629171019808" creator="zc" modified="20200702100127090" modifier="zc" tags="about zc" title="zc">
 <pre>第二故乡是卢旺达, 目前在新加坡工作.
