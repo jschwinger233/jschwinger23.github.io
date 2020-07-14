@@ -11537,7 +11537,7 @@ This plugin also requires the JSZip plugin ([[$:/plugins/tiddlywiki/jszip]]) to 
 
 `lsof -p` 通过遍历 `/proc/$PID/fd/`, 先获得 inode no, 再通过 `/proc/$PID/net/tcp{,6}` 得到端口等信息.
 
-!! Discussion 
+!! Discussion
 
 比方说我们要在程序里去获得 `lsof -p$PID | grep $PORT` 的结果, 利用 fork + execvp 显然是行为艺术了, 所以大家开始研究 lsof 的实现.
 
@@ -11954,10 +11954,66 @@ err := Execute(ctx, ttl, deployCmd, createMetaCmd)
 
 ```
 docker run -d -p 2379:2379 --name etcd  quay.io/coreos/etcd:v3.4.9 /usr/local/bin/etcd --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://0.0.0.0:2379
+```
+
+若要三点集群就恶心一点, 因为 docker for mac 不能用 host 网络, 而 etcd advertise url 必须写 netloc, 还好我们有 docker network 黑科技:
+
+```
+set -ex
+
+image=gcr.io/etcd-development/etcd:v3.4.9
+client_port0=2379
+client_port1=2380
+client_port2=2381
+
+docker run -d -p $client_port0:2379 --net etcd \
+ --name etcd0 $image \
+ /usr/local/bin/etcd \
+ --name etcd0 \
+ --advertise-client-urls http://etcd0:2379 \
+ --listen-client-urls http://0.0.0.0:2379 \
+ --initial-advertise-peer-urls http://etcd0:2380 \
+ --listen-peer-urls http://0.0.0.0:2380 \
+ --initial-cluster-token etcd-cluster-1 \
+ --initial-cluster etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380 \
+ --initial-cluster-state new
+
+docker run -d -p $client_port1:2379 --net etcd \
+ --name etcd1 $image \
+ /usr/local/bin/etcd \
+ --name etcd1 \
+ --advertise-client-urls http://etcd1:2379 \
+ --listen-client-urls http://0.0.0.0:2379 \
+ --initial-advertise-peer-urls http://etcd1:2380 \
+ --listen-peer-urls http://0.0.0.0:2380 \
+ --initial-cluster-token etcd-cluster-1 \
+ --initial-cluster etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380 \
+ --initial-cluster-state new
+
+docker run -d -p $client_port2:2379 --net etcd \
+ --name etcd2 $image \
+ /usr/local/bin/etcd \
+ --name etcd2 \
+ --advertise-client-urls http://etcd2:2379 \
+ --listen-client-urls http://0.0.0.0:2379 \
+ --initial-advertise-peer-urls http://etcd2:2380 \
+ --listen-peer-urls http://0.0.0.0:2380 \
+ --initial-cluster-token etcd-cluster-1 \
+ --initial-cluster etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380 \
+ --initial-cluster-state new
+```
+
+然后就可以访问了
+
+```
+etcd $ etcdctl --endpoints http://localhost:2379,http://localhost:2380,http://localhost:2381 endpoint status
+http://localhost:2379, 2c6c7b8d0d0933f7, 3.4.9, 20 kB, false, false, 2, 8, 8,
+http://localhost:2380, 99eab3685d8363a1, 3.4.9, 20 kB, true, false, 2, 8, 8,
+http://localhost:2381, dcb68c82481661be, 3.4.9, 20 kB, false, false, 2, 8, 8,
 ```</pre>
 </div>
 <div created="20200707071226633" creator="zc" modified="20200707080511578" modifier="zc" tags="go eru gdb debug" title="2020-07-07 GDB attach Go process">
-<pre>好的我知道官方都推荐使用 delve 调试, 但是 gdb 有额外的好处. 
+<pre>好的我知道官方都推荐使用 delve 调试, 但是 gdb 有额外的好处.
 
 如果只是调试自己的应用是最简单的, 只需要保证 “完全一致”.
 
@@ -11991,7 +12047,7 @@ docker run -d -p 2379:2379 --name etcd  quay.io/coreos/etcd:v3.4.9 /usr/local/bi
 #  containerd
 ## `make` 就能编译
 ## 但是不能编译出相同的文件, 缺少参数, 需要进一步了解 containerd 发布流程, 比如在什么镜像里构建, 才能完全复制
-# etcd 
+# etcd
 ## 直接 `make build` 就可以了, 出来的文件就有符号表
 ## 需要使用 gvm 控制 go 版本
 
@@ -12151,11 +12207,11 @@ https://neovim.io/doc/user/motion.html#jumplist
 
 结论:
 
-!!! CNM 四大方法: 
+!!! CNM 四大方法:
 
 `driver.CreateNetwork`, 由 `docker network create --driver --ipam --subnet` 触发
 
-`ipam.RequestAddress`, 在 `docker start` 时候触发, 调用栈为 
+`ipam.RequestAddress`, 在 `docker start` 时候触发, 调用栈为
 
 ```
  0  0x00000000024aa56b in github.com/docker/docker/vendor/github.com/docker/libnetwork/ipam.(*Allocator).RequestAddress
@@ -12194,7 +12250,7 @@ https://neovim.io/doc/user/motion.html#jumplist
     at /usr/local/go/src/runtime/asm_amd64.s:1357
 ```
 
-`driver.CreateEndpoint` 在 `docker start` 触发, 调用栈为 
+`driver.CreateEndpoint` 在 `docker start` 触发, 调用栈为
 
 ```
 0  0x000000000247a0fb in github.com/docker/docker/vendor/github.com/docker/libnetwork/drivers/bridge.(*driver).CreateEndpoint
@@ -13672,7 +13728,7 @@ $tw.Wiki = function(options) {
 				var index = tiddlerTitles.indexOf(title);
 				if(index !== -1) {
 					tiddlerTitles.splice(index,1);
-				}				
+				}
 			}
 			// Record the new tiddler state
 			updateDescriptor["new"] = {
@@ -13819,7 +13875,7 @@ $tw.Wiki = function(options) {
 				}
 			} else {
 				if(pluginInfo[title]) {
-					delete pluginInfo[title];					
+					delete pluginInfo[title];
 					results.deletedPlugins.push(title);
 				}
 			}
@@ -14698,7 +14754,7 @@ $tw.loadTiddlersNode = function() {
 				type = parts[0];
 			if(parts.length  === 3 && ["plugins","themes","languages"].indexOf(type) !== -1) {
 				$tw.loadPlugins([parts[1] + "/" + parts[2]],$tw.config[type + "Path"],$tw.config[type + "EnvVar"]);
-			}			
+			}
 		}
 	});
 	// Load the tiddlers from the wiki directory
