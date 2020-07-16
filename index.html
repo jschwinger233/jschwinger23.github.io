@@ -181,6 +181,8 @@ Error message and password prompt
 
 <li>$:/state/image-picker/system--1555866629</li>
 
+<li>$:/state/image-picker/system-923888157</li>
+
 <li>$:/state/showeditpreview</li>
 
 <li>$:/state/sidebar</li>
@@ -458,6 +460,8 @@ Error message and password prompt
 <li>2020-07-13 How Dockerd works with Libnetwork</li>
 
 <li>2020-07-14 Docker endpoints starting with ep-</li>
+
+<li>2020-07-17 gRPC-go 客户端</li>
 
 <li>zc</li>
 
@@ -10313,6 +10317,9 @@ Error message and password prompt
 <div created="20200702062430854" creator="zc" modified="20200702062430854" modifier="zc" title="$:/state/image-picker/system--1555866629">
 <pre>show</pre>
 </div>
+<div created="20200716180115564" creator="zc" modified="20200716180201078" modifier="zc" title="$:/state/image-picker/system-923888157">
+<pre>show</pre>
+</div>
 <div created="20200629165501323" creator="zc" modified="20200707075522575" modifier="zc" title="$:/state/showeditpreview">
 <pre>yes</pre>
 </div>
@@ -10355,7 +10362,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div list="[[2020-07-14 Docker endpoints starting with ep-]] [[2020-07-13 How Dockerd works with Libnetwork]] [[2020-07-12 gRPC 抓包]] [[2020-07-10 neovim]] [[2020-07-10 Goroutine Pitfalls]] [[2020-07-07 GDB attach Go process]] [[2020-07-04 Running etcd under Docker]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
+<div list="[[2020-07-17 gRPC-go 客户端]] [[2020-07-14 Docker endpoints starting with ep-]] [[2020-07-13 How Dockerd works with Libnetwork]] [[2020-07-12 gRPC 抓包]] [[2020-07-10 neovim]] [[2020-07-10 Goroutine Pitfalls]] [[2020-07-07 GDB attach Go process]] [[2020-07-04 Running etcd under Docker]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -12397,6 +12404,75 @@ Join 接受 network, ep, sandbox key; bridge 在这里设置 gateway; calico 在
 # step in 看到是由于遍历 ep 的时候需要从内存里的 sandbox map 里取 info, 得到的话就用 info 记录的 container id, 否则用 `ep-$EPID`
 # 找 sandbox map 在哪里被更新的, 发现是在 NewSandbox
 # 推测这是完全的内存数据结构, 所以对于不同节点容器就会显示 ep-</pre>
+</div>
+<div created="20200716172641350" creator="zc" modified="20200716181110386" modifier="zc" tags="grpc" title="2020-07-17 gRPC-go 客户端">
+<pre>关注三个抽象和两个勾子:
+
+# 抽象
+## Resolver
+## Balancer
+## ClientConn
+# 勾子
+## StreamClientInterceptor
+## UnaryClientInterceptor
+
+调用链是这样的:
+
+# 用户: resolver.Register 注册 resolver builder
+# 用户: balancer.Register 注册 balancer builder
+# 用户: 调用 grpc.DialContext, 传入的 DialOption `grpc.WithBalancerName` 和 endpoints
+# grpc: 根据 balancer name 找到注册的 balancer builder, 实例化 balancer
+# grpc: 根据 endpoint scheme 找到注册的 resolve builder, 实例化 resolver
+# 用户: 实例化 resolver builder 时启动 goroutine 监听服务发现, 如果有变化则调用 resolver.ClientConn.UpdateState 传递最新的 netloc
+# grpc: resolver.ClientConn 收到 resolver update 后, 调用 Balancer.UpdateClientConnState
+# 用户: UpdateClientConnState 里调用 balancer.ClientConn.NewSubConn / RemoveSubConn, 保存 subconn 状态, 调用 SubConn.Connect
+# grpc: subconn 状态改变后调用 Balancer.UpdateSubConnState 通知变化
+# 用户: Balancer.UpdateSubConnState 维护 subconn 状态, 重新生成 Picker, 最后调用 balancer.ClientConn.UpdateState 传递新 Picker
+# 用户: 实现 Picker.Pick 及特定算法, 从 balancer.SubConn 里选出一个 subconn
+# grpc: 用 Picker 选出的 subconn 发请求
+
+勾子就简单多了, 如果去看 pb.go, 比如
+
+```
+func (x *watchWatchClient) Recv() (*WatchResponse, error) {
+	m := new(WatchResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+```
+
+那么我们通过 StreamClientInterceptor 生成的 ClientStream 就会成为这里的 `x.ClientStream`, 从而完成各种 hooks.
+
+三大抽象虽然复杂, 但是上限相当高, 提供了相当大的灵活度供我们定制.
+
+如果不想定制的话也有内置的 balancer 和 picker, 直接指定 `grpc.WithBalancerName(&quot;round_robin&quot;)` 就行了; 此外 resolver 如果返回的 resolver.Address 是 grpclb, 那么会启用 `grpclb` balancer 而无视 DialOption.
+
+[img[https://raw.githubusercontent.com/jschwinger23/jschwinger23.github.io/master/data/load-balancing.png]]
+
+整体来看 grpc 提供的能力:
+
+# LB per RPC
+# LB in client side
+# Service discovery
+# Retry mechanism
+# Costom LB algorithm
+
+优点:
+
+# High performance because elimination of extra hop
+
+缺点:
+
+# Complex client
+# Client keeps track of server load and health
+# Client implements load balancing algorithm
+# Per-language implementation and maintenance burden
+# Client needs to be trusted, or the trust boundary needs to be handled by a lookaside LB.
+
+
+</pre>
 </div>
 <div author="zc" created="20200629171019808" creator="zc" modified="20200702100127090" modifier="zc" tags="about zc" title="zc">
 <pre>第二故乡是卢旺达, 目前在新加坡工作.
