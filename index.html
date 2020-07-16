@@ -445,7 +445,7 @@ Error message and password prompt
 
 <li>2020-06-03 Command 模式</li>
 
-<li>2020-06-04 etcd</li>
+<li>2020-07-04 Running etcd under Docker</li>
 
 <li>2020-07-07 GDB attach Go process</li>
 
@@ -10355,7 +10355,7 @@ Error message and password prompt
 <div created="20200629095409123" creator="z" modified="20200629095409194" modifier="z" title="$:/status/UserName">
 <pre>zc</pre>
 </div>
-<div list="[[2020-07-14 Docker endpoints starting with ep-]] [[2020-07-13 How Dockerd works with Libnetwork]] [[2020-07-12 gRPC 抓包]] [[2020-07-10 neovim]] [[2020-07-10 Goroutine Pitfalls]] [[2020-07-07 GDB attach Go process]] [[2020-06-04 etcd]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
+<div list="[[2020-07-14 Docker endpoints starting with ep-]] [[2020-07-13 How Dockerd works with Libnetwork]] [[2020-07-12 gRPC 抓包]] [[2020-07-10 neovim]] [[2020-07-10 Goroutine Pitfalls]] [[2020-07-07 GDB attach Go process]] [[2020-07-04 Running etcd under Docker]] [[2020-06-03 Command 模式]] [[2020-06-02 lsof 的本质]] [[2020-06-02 事务设计的思考]] zc" title="$:/StoryList">
 <pre></pre>
 </div>
 <div created="20200629165640763" creator="zc" modified="20200629165703464" modifier="zc" title="$:/temp/advancedsearch">
@@ -11949,7 +11949,7 @@ err := Execute(ctx, ttl, deployCmd, createMetaCmd)
 
 不过这里有其他隐患, 其中最大的一个是 `defer cancel()`, 另外一个是 `Command.Do()` 本身的事务性, 就不展开讲了.</pre>
 </div>
-<div created="20200702175445917" creator="zc" modified="20200702175605422" modifier="zc" tags="etcd bash docker" title="2020-06-04 etcd">
+<div created="20200702175445917" creator="zc" modified="20200714074101821" modifier="zc" tags="etcd bash docker" title="2020-07-04 Running etcd under Docker">
 <pre>在 macOS 运行单点 etcd 供本地开发:
 
 ```
@@ -12379,7 +12379,7 @@ Join 接受 network, ep, sandbox key; bridge 在这里设置 gateway; calico 在
 
 </pre>
 </div>
-<div created="20200714032658862" creator="zc" modified="20200714034140603" modifier="zc" tags="docker libnetwork debug" title="2020-07-14 Docker endpoints starting with ep-">
+<div created="20200714032658862" creator="zc" modified="20200714125654020" modifier="zc" tags="docker libnetwork debug" title="2020-07-14 Docker endpoints starting with ep-">
 <pre>`docker network inspect` 经常会发现一些 ep id 是 `ep-xxxx` 而不是容器, 然而记录的 ep info 都是准确的, 那么这种 ep 是怎么产生的呢.
 
 !!! TL;DR
@@ -12392,6 +12392,7 @@ Join 接受 network, ep, sandbox key; bridge 在这里设置 gateway; calico 在
 # `make shell` 构建 docker-dev 镜像
 # 退出, 把 make shell 的 docker run 命令加上 --net host 手动运行
 # 把 `/etc/docker/daemon.json` 搞进去, 但是改改监听端口
+# go 版本太低的话重新安装, 但是 apt 是废的, 直接 `wget https://dl.google.com/go/go1.12.linux-amd64.tar.gz`
 # 找 `ep-` 是在哪里的代码, 断点打上
 # step in 看到是由于遍历 ep 的时候需要从内存里的 sandbox map 里取 info, 得到的话就用 info 记录的 container id, 否则用 `ep-$EPID`
 # 找 sandbox map 在哪里被更新的, 发现是在 NewSandbox
